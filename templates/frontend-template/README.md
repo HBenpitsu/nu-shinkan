@@ -30,7 +30,20 @@ cp -r templates/frontend-template apps/xxxx
 }
 ```
 
-4. 依存関係を解決します．
+4. `package.json`のscriptフィールド，devに記述されたポート番号を他と衝突しないように変更します
+
+```json
+{
+  ...
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port zzzz",
+    ...
+  },
+  ...
+}
+```
+
+5. 依存関係を解決します．
 
 ```sh
 cp apps/xxxx

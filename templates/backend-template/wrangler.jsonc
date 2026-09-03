@@ -6,9 +6,9 @@
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
-  // "vars": {
-  //   "MY_VAR": "my-variable"
-  // },
+  "vars": {
+    "SELF": "localhost:6173"
+  },
   // "kv_namespaces": [
   //   {
   //     "binding": "MY_KV_NAMESPACE",
@@ -31,6 +31,13 @@
   // "ai": {
   //   "binding": "AI"
   // },
+  "env": {
+    "production": {
+       "vars": {
+         "SELF": "xxxxx"
+       }
+    }
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1

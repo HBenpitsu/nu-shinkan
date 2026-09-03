@@ -10,9 +10,13 @@
     ],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+    
+    "types": ["@cloudflare/workers-types"],
 
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "~/*": ["./*"]
     }
   },
+  "include": ["src", "test", "worker-configuration.d.ts"]
 }

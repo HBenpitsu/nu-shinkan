@@ -30,7 +30,20 @@ cp -r templates/backend-template apps/xxxx
 }
 ```
 
-4. 依存関係を解決します．
+4. `package.json`のdevDependenciesに，利用する他のbackendを記述します．
+
+```json
+{
+  ...
+  "scripts": {
+    "dev": "wrangler dev --host 0.0.0.0 --port zzzz",
+    ...
+  },
+  ...
+}
+```
+
+5. 依存関係を解決します．
 
 ```sh
 cp apps/xxxx
