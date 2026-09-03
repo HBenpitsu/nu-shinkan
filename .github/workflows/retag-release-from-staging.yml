@@ -1,0 +1,44 @@
+name: Retag Release From Staging
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: retag-release
+  cancel-in-progress: false
+
+jobs:
+  retag:
+    name: Move release to staging commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move release tag to staging commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          if ! git show-ref --verify --quiet refs/tags/staging; then
+            echo "Tag not found: staging" >&2
+            exit 1
+          fi
+
+          TARGET_SHA="$(git rev-parse "refs/tags/staging^{commit}")"
+
+          git tag -f release "${TARGET_SHA}"
+          git push origin refs/tags/release --force
+
+          {
+            echo "## Retag result"
+            echo "- Tag: release"
+            echo "- Source tag: staging"
+            echo "- New commit: ${TARGET_SHA}"
+          } >> "${GITHUB_STEP_SUMMARY}"

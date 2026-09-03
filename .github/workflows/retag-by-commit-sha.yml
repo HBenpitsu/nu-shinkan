@@ -1,0 +1,58 @@
+name: Retag By Commit SHA
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to move.
+        required: true
+        type: choice
+        options:
+          - staging
+          - release
+      commit_sha:
+        description: Full or short commit SHA to retag.
+        required: true
+        type: string
+
+concurrency:
+  group: retag-${{ inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  retag:
+    name: Move tag to commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ inputs.tag_name }}
+          TARGET_SHA: ${{ inputs.commit_sha }}
+        run: |
+          set -euo pipefail
+
+          git fetch --force --tags origin
+
+          if ! git cat-file -e "${TARGET_SHA}^{commit}" 2>/dev/null; then
+            echo "Commit not found: ${TARGET_SHA}" >&2
+            exit 1
+          fi
+
+          RESOLVED_SHA="$(git rev-parse "${TARGET_SHA}^{commit}")"
+
+          git tag -f "${TAG_NAME}" "${RESOLVED_SHA}"
+          git push origin "refs/tags/${TAG_NAME}" --force
+
+          {
+            echo "## Retag result"
+            echo "- Tag: ${TAG_NAME}"
+            echo "- New commit: ${RESOLVED_SHA}"
+          } >> "${GITHUB_STEP_SUMMARY}"
