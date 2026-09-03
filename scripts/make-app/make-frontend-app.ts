@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
 /**
- * backend テンプレートを apps 配下へ展開するスクリプトです。
+ * frontend テンプレートを apps 配下へ展開するスクリプトです。
  * 既存アプリのポート使用状況を見て、未使用ポートを自動で割り当てます。
  *
  * 想定実行場所: リポジトリルート
  * 使い方:
- *   - pnpm make:backend
- *   - pnpm make:backend my-backend
- *   - pnpm make:backend my-backend --deps backend-a,backend-b
- *   - pnpm make:backend --no-install
+ *   - pnpm make:frontend
+ *   - pnpm make:frontend my-frontend
+ *   - pnpm make:frontend my-frontend --deps backend-a,backend-b
+ *   - pnpm make:frontend --no-install
  */
 
 import {
@@ -30,9 +30,9 @@ import {
   parseScaffoldArgs,
 } from "./scaffold-shared.js";
 
-const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const rootDir = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const appsDir = resolve(rootDir, "apps");
-const templateDir = resolve(rootDir, "templates/backend-template");
+const templateDir = resolve(rootDir, "templates/frontend-template");
 
 function updatePackageJson(
   targetDir: string,
@@ -79,11 +79,11 @@ function updatePackageJson(
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
-function updateWranglerConfig(targetDir: string, appName: string, port: number): void {
+function updateWranglerConfig(targetDir: string, appName: string): void {
   const configPath = join(targetDir, "wrangler.jsonc");
   const configText = readFileSync(configPath, "utf8");
   let didReplaceName = false;
-  const renamed = configText.replace(
+  const updated = configText.replace(
     /"name"\s*:\s*"[^"]*"/,
     () => {
       didReplaceName = true;
@@ -95,30 +95,16 @@ function updateWranglerConfig(targetDir: string, appName: string, port: number):
     throw new Error("wrangler.jsonc に name フィールドが見つかりません");
   }
 
-  let didReplaceSelfPort = false;
-  const updated = renamed.replace(
-    /"SELF"\s*:\s*"[^"]*:\d{2,5}"/,
-    () => {
-      didReplaceSelfPort = true;
-      return `"SELF": "localhost:${port}"`;
-    },
-  );
-
-  if (!didReplaceSelfPort) {
-    throw new Error("wrangler.jsonc に SELF のポート設定が見つかりません");
-  }
-
   writeFileSync(configPath, updated);
 }
 
 async function main(): Promise<void> {
-  const usage = "pnpm make:backend [app-name] [--deps backend-a,backend-b] [--no-install]";
+  const usage = "pnpm make:frontend [app-name] [--deps backend-a,backend-b] [--no-install]";
   const args = parseScaffoldArgs(process.argv.slice(2), usage);
 
   if (args.help) {
     console.log(
-      "Usage: tsx ./scripts/make-backend-app.ts [app-name] [--deps " +
-        "backend-a,backend-b] [--no-install]",
+      "Usage: tsx ./scripts/make-frontend-app.ts [app-name] [--deps backend-a,backend-b] [--no-install]",
     );
     return;
   }
@@ -129,7 +115,7 @@ async function main(): Promise<void> {
 
   mkdirSync(appsDir, { recursive: true });
   const usedPorts = collectUsedPorts(appsDir);
-  const port = findAvailablePort(usedPorts, 6173);
+  const port = findAvailablePort(usedPorts, 5173);
 
   const rl = createInterface({
     input: process.stdin,
@@ -141,8 +127,8 @@ async function main(): Promise<void> {
       args.appName ??
       (await askQuestion(
         rl,
-        "新しい backend アプリ名を入力してください",
-        "my-backend",
+        "新しい frontend アプリ名を入力してください",
+        "my-frontend",
       ));
     const appName = normalizeAppName(requestedName);
     const targetDir = resolve(appsDir, appName);
@@ -157,7 +143,7 @@ async function main(): Promise<void> {
       args.deps ??
       (await askQuestion(
         rl,
-        "利用する他の backend をカンマ区切りで入力してください（後で記入する場合は，そのままエンターを入力してください）",
+        "利用する backend をカンマ区切りで入力してください（後で記入する場合は，そのままエンターを入力してください）",
         "",
       ));
     const deps = depInput
@@ -166,11 +152,11 @@ async function main(): Promise<void> {
       .filter(Boolean);
 
     updatePackageJson(targetDir, appName, deps, port);
-    updateWranglerConfig(targetDir, appName, port);
+    updateWranglerConfig(targetDir, appName);
 
     await maybeInstallDependencies(targetDir, args, rl);
 
-    console.log(`\n✅ backend app created: apps/${appName} (port: ${port})`);
+    console.log(`\n✅ frontend app created: apps/${appName} (port: ${port})`);
   } finally {
     rl.close();
   }
