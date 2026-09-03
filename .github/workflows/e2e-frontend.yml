@@ -2,9 +2,12 @@ name: E2E Frontend
 
 on:
   push:
-    branches: [main, master]
+    tags:
+      - "release"
+      - "staging"
   pull_request:
-    branches: [main, master]
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: e2e-frontend-${{ github.event_name }}-${{ github.ref }}
@@ -63,7 +66,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: pnpm
 
       - name: Setup pnpm

@@ -2,6 +2,7 @@ name: Clean Preview By PR Close
 
 on:
   pull_request:
+    branches: [main]
     types: [closed]
 
 jobs:
