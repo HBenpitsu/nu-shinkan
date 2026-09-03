@@ -11,6 +11,7 @@ const MAX_PORT = 65_535;
 
 const PORT_PATTERNS = [
   /--port(?:=|\s+)(\d{2,5})/g,
+  /--inspector-port(?:=|\s+)(\d{2,5})/g,
   /(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(\d{2,5})/g,
   /\bPORT\s*[:=]\s*["']?(\d{2,5})\b/g,
 ];

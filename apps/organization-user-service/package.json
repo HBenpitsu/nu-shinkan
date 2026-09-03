@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "dev": "wrangler dev --host 0.0.0.0 --port 6173",
+    "dev": "wrangler dev --host 0.0.0.0 --port 6173 --inspector-port 7173",
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",

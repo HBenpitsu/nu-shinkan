@@ -38,6 +38,7 @@ function updatePackageJson(
   targetDir: string,
   appName: string,
   port: number,
+  inspectorPort: number,
 ): void {
   const packageJsonPath = join(targetDir, "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
@@ -66,7 +67,22 @@ function updatePackageJson(
     );
   }
 
-  packageJson.scripts.dev = updatedDevScript;
+  let didReplaceInspectorPort = false;
+  let updatedWithInspectorPort = updatedDevScript.replace(
+    /--inspector-port(?:=|\s+)\d{2,5}/,
+    (match) => {
+      didReplaceInspectorPort = true;
+      return match.includes("=")
+        ? `--inspector-port=${inspectorPort}`
+        : `--inspector-port ${inspectorPort}`;
+    },
+  );
+
+  if (!didReplaceInspectorPort) {
+    updatedWithInspectorPort = `${updatedWithInspectorPort} --inspector-port ${inspectorPort}`;
+  }
+
+  packageJson.scripts.dev = updatedWithInspectorPort;
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
@@ -119,6 +135,9 @@ async function main(): Promise<void> {
   mkdirSync(appsDir, { recursive: true });
   const usedPorts = collectUsedPorts(appsDir);
   const port = findAvailablePort(usedPorts, 6173);
+  const usedPortsWithDevPort = new Set(usedPorts);
+  usedPortsWithDevPort.add(port);
+  const inspectorPort = findAvailablePort(usedPortsWithDevPort, 9229);
 
   const rl = createInterface({
     input: process.stdin,
@@ -142,7 +161,7 @@ async function main(): Promise<void> {
 
     cpSync(templateDir, targetDir, { recursive: true, force: false });
 
-    updatePackageJson(targetDir, appName, port);
+    updatePackageJson(targetDir, appName, port, inspectorPort);
     updateWranglerConfig(targetDir, appName, port);
 
     await installDependencies(targetDir, args);
@@ -153,7 +172,9 @@ async function main(): Promise<void> {
       shell: false,
     });
 
-    console.log(`\n✅ backend app created: apps/${appName} (port: ${port})`);
+    console.log(
+      `\n✅ backend app created: apps/${appName} (port: ${port}, inspector-port: ${inspectorPort})`,
+    );
   } finally {
     rl.close();
   }
