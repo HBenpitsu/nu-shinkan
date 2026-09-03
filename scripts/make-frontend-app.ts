@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 
-import { spawnSync } from "node:child_process";
+/**
+ * frontend テンプレートを apps 配下へ展開するスクリプトです。
+ * 既存アプリのポート使用状況を見て、未使用ポートを自動で割り当てます。
+ *
+ * 想定実行場所: リポジトリルート
+ * 使い方:
+ *   - pnpm make:frontend
+ *   - pnpm make:frontend my-frontend
+ *   - pnpm make:frontend my-frontend --deps backend-a,backend-b
+ *   - pnpm make:frontend --no-install
+ */
+
 import {
   cpSync,
   existsSync,
@@ -12,81 +23,16 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
 import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
+import {
+  askQuestion,
+  maybeInstallDependencies,
+  normalizeAppName,
+  parseScaffoldArgs,
+} from "./scaffold-shared.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const appsDir = resolve(rootDir, "apps");
 const templateDir = resolve(rootDir, "templates/frontend-template");
-
-function normalizeAppName(value: string): string {
-  const normalized = value
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  if (!normalized) {
-    throw new Error("アプリ名が空です");
-  }
-
-  return normalized;
-}
-
-function parseArgs(): Record<string, string> {
-  const result: Record<string, string> = {};
-  const args = process.argv.slice(2);
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-
-    if (arg === undefined) {
-      continue;
-    }
-
-    if (arg === "--help" || arg === "-h") {
-      result.help = "1";
-      continue;
-    }
-
-    if (arg.startsWith("--")) {
-      const [key = "", rawValue] = arg.split("=", 2);
-
-      if (!key) {
-        continue;
-      }
-
-      const nextValue = rawValue ?? args[index + 1];
-
-      if (nextValue && !nextValue.startsWith("--")) {
-        result[key.slice(2)] = nextValue;
-        index += 1;
-      } else {
-        result[key.slice(2)] = rawValue ?? "";
-      }
-      continue;
-    }
-
-    if (!result.name) {
-      result.name = arg;
-    }
-  }
-
-  return result;
-}
-
-function askQuestion(
-  rl: ReturnType<typeof createInterface>,
-  message: string,
-  defaultValue = "",
-): Promise<string> {
-  return new Promise((resolve) => {
-    const prompt = defaultValue
-      ? `${message} [${defaultValue}]: `
-      : `${message}: `;
-    rl.question(prompt, (answer) => {
-      resolve(answer.trim() || defaultValue);
-    });
-  });
-}
 
 function updatePackageJson(
   targetDir: string,
@@ -106,12 +52,16 @@ function updatePackageJson(
     throw new Error("package.json に dev script が見つかりません");
   }
 
+  let didReplaceDevPort = false;
   const updatedDevScript = currentDevScript.replace(
     /--port(?:=|\s+)\d{2,5}/,
-    (match) => (match.includes("=") ? `--port=${port}` : `--port ${port}`),
+    (match) => {
+      didReplaceDevPort = true;
+      return match.includes("=") ? `--port=${port}` : `--port ${port}`;
+    },
   );
 
-  if (updatedDevScript === currentDevScript) {
+  if (!didReplaceDevPort) {
     throw new Error("package.json の dev script に --port 指定が見つかりません");
   }
 
@@ -132,12 +82,16 @@ function updatePackageJson(
 function updateWranglerConfig(targetDir: string, appName: string): void {
   const configPath = join(targetDir, "wrangler.jsonc");
   const configText = readFileSync(configPath, "utf8");
+  let didReplaceName = false;
   const updated = configText.replace(
     /"name"\s*:\s*"[^"]*"/,
-    `"name": "${appName}"`,
+    () => {
+      didReplaceName = true;
+      return `"name": "${appName}"`;
+    },
   );
 
-  if (updated === configText) {
+  if (!didReplaceName) {
     throw new Error("wrangler.jsonc に name フィールドが見つかりません");
   }
 
@@ -145,11 +99,12 @@ function updateWranglerConfig(targetDir: string, appName: string): void {
 }
 
 async function main(): Promise<void> {
-  const args = parseArgs();
+  const usage = "pnpm make:frontend [app-name] [--deps backend-a,backend-b] [--no-install]";
+  const args = parseScaffoldArgs(process.argv.slice(2), usage);
 
   if (args.help) {
     console.log(
-      "Usage: tsx ./scripts/make-frontend-app.ts [--name <app-name>] [--deps backend-a,backend-b] [--no-install]",
+      "Usage: tsx ./scripts/make-frontend-app.ts [app-name] [--deps backend-a,backend-b] [--no-install]",
     );
     return;
   }
@@ -169,7 +124,7 @@ async function main(): Promise<void> {
 
   try {
     const requestedName =
-      args.name ??
+      args.appName ??
       (await askQuestion(
         rl,
         "新しい frontend アプリ名を入力してください",
@@ -199,28 +154,7 @@ async function main(): Promise<void> {
     updatePackageJson(targetDir, appName, deps, port);
     updateWranglerConfig(targetDir, appName);
 
-    const installChoice =
-      args.install === "false" || args.install === "no"
-        ? "n"
-        : args.install === "true" || args.install === "yes"
-          ? "y"
-          : (
-              await askQuestion(rl, "依存関係をインストールしますか？", "y")
-            ).toLowerCase();
-
-    if (installChoice === "y" || installChoice === "yes") {
-      const installResult = spawnSync("pnpm", ["install"], {
-        cwd: targetDir,
-        stdio: "inherit",
-        shell: false,
-      });
-
-      if (installResult.status !== 0) {
-        throw new Error(
-          `pnpm install に失敗しました (exit=${installResult.status})`,
-        );
-      }
-    }
+    await maybeInstallDependencies(targetDir, args, rl);
 
     console.log(`\n✅ frontend app created: apps/${appName} (port: ${port})`);
   } finally {

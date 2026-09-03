@@ -1,6 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+/**
+ * apps 配下の既存プロジェクトからポート利用状況を収集し、
+ * 新規アプリ作成時の空きポート選定に使うユーティリティです。
+ */
+
 const MIN_PORT = 1;
 const MAX_PORT = 65_535;
 
@@ -47,6 +52,7 @@ function extractPortsFromText(text: string): number[] {
 }
 
 export function collectUsedPorts(appsDir: string): Set<number> {
+  // 既存アプリでよく使う設定ファイルを走査して、登場するポート番号を集約する。
   const usedPorts = new Set<number>();
 
   if (!existsSync(appsDir)) {
@@ -84,6 +90,7 @@ export function findAvailablePort(
   usedPorts: Set<number>,
   preferredPort: number,
 ): number {
+  // preferredPort 以上で最初に未使用のポートを返す。
   let candidate = preferredPort;
 
   while (usedPorts.has(candidate)) {
