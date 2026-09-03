@@ -1,0 +1,23 @@
+{
+  "name": "backend-template",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "hono": "^4.13.5"
+  },
+  "devDependencies": {
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.110.0"
+  }
+}

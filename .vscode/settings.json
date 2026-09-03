@@ -1,0 +1,14 @@
+{
+    "json.schemaDownload.trustedDomains": {
+        "https://turborepo.dev/schema.json": true
+    },
+    "files.readonlyInclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "files.watcherExclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "search.exclude": {
+        "**/routeTree.gen.ts": true
+    }
+}
