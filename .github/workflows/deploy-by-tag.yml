@@ -1,4 +1,4 @@
-name: Deploy Tag
+name: Deploy By Tag
 
 on:
   workflow_call:
