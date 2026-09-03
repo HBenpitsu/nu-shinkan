@@ -1,0 +1,10 @@
+{
+  "name": "@repo/env-config",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "env-config-materialize": "./bin/materialize.mjs",
+    "env-config-sync-local": "./bin/sync-local.mjs"
+  }
+}

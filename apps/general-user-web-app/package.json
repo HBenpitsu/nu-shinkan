@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5174",
     "build": "tsc -b && vite build",
-    "build:release": "tsc -b && VITE_DEPLOY_ENV=release vite build",
-    "build:staging": "tsc -b && VITE_DEPLOY_ENV=staging vite build",
-    "deploy:release": "pnpm run build:release && wrangler deploy --minify",
-    "deploy:staging": "pnpm run build:staging && wrangler deploy --minify",
+    "build:release": "pnpm exec env-config-materialize --env release && tsc -b && vite build --mode release",
+    "build:staging": "pnpm exec env-config-materialize --env staging && tsc -b && vite build --mode staging",
+    "build:preview": "pnpm exec env-config-materialize --env preview && tsc -b && vite build --mode preview",
+    "deploy:release": "pnpm run build:release && wrangler deploy --config .generated/wrangler.release.jsonc --minify",
+    "deploy:staging": "pnpm run build:staging && wrangler deploy --config .generated/wrangler.staging.jsonc --minify",
+    "deploy:preview": "pnpm run build:preview && wrangler deploy --config .generated/wrangler.preview.jsonc --minify",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -24,6 +26,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@repo/env-config": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@tanstack/router-plugin": "^1.168.35",

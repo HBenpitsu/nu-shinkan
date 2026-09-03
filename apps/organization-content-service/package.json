@@ -5,8 +5,9 @@
     "test": "vitest",
     "dev": "wrangler dev --host 0.0.0.0 --port 6174 --inspector-port 7174",
     "build": "wrangler types --env-interface CloudflareBindings",
-    "deploy:release": "wrangler deploy --env release --minify",
-    "deploy:staging": "wrangler deploy --env staging --minify",
+    "deploy:release": "pnpm exec env-config-materialize --env release && wrangler deploy --config .generated/wrangler.release.jsonc --minify",
+    "deploy:staging": "pnpm exec env-config-materialize --env staging && wrangler deploy --config .generated/wrangler.staging.jsonc --minify",
+    "deploy:preview": "pnpm exec env-config-materialize --env preview && wrangler deploy --config .generated/wrangler.preview.jsonc --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
     "lint": "eslint ."
@@ -15,6 +16,7 @@
     "hono": "^4.13.5"
   },
   "devDependencies": {
+    "@repo/env-config": "workspace:*",
     "@cloudflare/workers-types": "^5.20260902.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.0",

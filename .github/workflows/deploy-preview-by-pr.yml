@@ -1,0 +1,151 @@
+name: Deploy Preview By PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: deploy-preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    name: Deploy preview for affected apps
+    if: |
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Detect changed apps
+        id: detect_changed_apps
+        run: pnpm --dir ./scripts exec tsx ./workflow-scripts/detect-changed-apps.ts
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+      - name: Deploy affected apps preview with Turbo
+        id: deploy_preview
+        if: steps.detect_changed_apps.outputs.deploy_skipped != 'true'
+        continue-on-error: true
+        shell: bash
+        env:
+          CHANGED_APPS_CSV: ${{ steps.detect_changed_apps.outputs.changed_apps_csv }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          deploy_log="/tmp/preview-deploy.log"
+          : > "${deploy_log}"
+
+          IFS=',' read -r -a changed_apps <<< "${CHANGED_APPS_CSV}"
+
+          turbo_filters=()
+          for app in "${changed_apps[@]}"; do
+            turbo_filters+=("--filter=./apps/${app}")
+          done
+
+          set +e
+          pnpm turbo run deploy:preview "${turbo_filters[@]}" 2>&1 | tee "${deploy_log}"
+          deploy_status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ ${deploy_status} -ne 0 ]]; then
+            error_summary=$(grep -E '(^|[[:space:]])(ERROR|Error|ERR_[A-Z_]+)' "${deploy_log}" | tail -n 6 || true)
+            if [[ -z "${error_summary}" ]]; then
+              error_summary="Preview deploy failed. Check workflow logs for details."
+            fi
+            {
+              echo "error_summary<<EOF"
+              echo "${error_summary}"
+              echo "EOF"
+            } >> "${GITHUB_OUTPUT}"
+
+            exit ${deploy_status}
+          fi
+
+      - name: Extract preview URLs
+        id: extract_preview_urls
+        if: steps.deploy_preview.outcome != 'skipped'
+        run: pnpm --dir ./scripts exec tsx ./workflow-scripts/extract-preview-urls.ts /tmp/preview-deploy.log
+
+      - name: Build PR comment body
+        id: build_comment_body
+        if: always()
+        run: pnpm --dir ./scripts exec tsx ./workflow-scripts/build-comment-body.ts
+        env:
+          DEPLOY_OUTCOME: ${{ steps.deploy_preview.outcome }}
+          DEPLOY_SKIPPED: ${{ steps.detect_changed_apps.outputs.deploy_skipped }}
+          CHANGED_APPS_CSV: ${{ steps.detect_changed_apps.outputs.changed_apps_csv }}
+          PREVIEW_URLS_CSV: ${{ steps.extract_preview_urls.outputs.preview_urls_csv }}
+          ERROR_SUMMARY: ${{ steps.deploy_preview.outputs.error_summary }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+
+      - name: Update PR with preview deploy status
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: ${{ steps.build_comment_body.outputs.comment_body }}
+        with:
+          script: |
+            const body = process.env.COMMENT_BODY ?? '<!-- preview-deploy-report -->\n## Preview Deploy\n- Status: failed\n';
+            const marker = '<!-- preview-deploy-report -->';
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) =>
+              comment.user?.type === 'Bot' &&
+              typeof comment.body === 'string' &&
+              comment.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Fail job when preview deploy failed
+        if: steps.deploy_preview.outcome == 'failure'
+        run: exit 1

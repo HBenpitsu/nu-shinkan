@@ -41,6 +41,11 @@
        "vars": {
          "SELF": "yyyyy"
        }
+    },
+    "preview": {
+       "vars": {
+         "SELF": "yyyyy"
+       }
     }
   },
   "observability": {
