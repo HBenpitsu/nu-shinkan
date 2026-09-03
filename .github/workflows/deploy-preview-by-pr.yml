@@ -49,6 +49,43 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
 
+      - name: Run E2E for changed frontend apps
+        if: steps.detect_changed_apps.outputs.deploy_skipped != 'true'
+        shell: bash
+        env:
+          CHANGED_APPS_CSV: ${{ steps.detect_changed_apps.outputs.changed_apps_csv }}
+        run: |
+          set -euo pipefail
+
+          IFS=',' read -r -a changed_apps <<< "${CHANGED_APPS_CSV}"
+          frontend_apps=()
+
+          for app in "${changed_apps[@]}"; do
+            if [[ -f "apps/${app}/playwright.config.ts" ]]; then
+              frontend_apps+=("${app}")
+            fi
+          done
+
+          if [[ ${#frontend_apps[@]} -eq 0 ]]; then
+            echo "No changed frontend app with Playwright config. Skipping E2E."
+            exit 0
+          fi
+
+          pnpm exec playwright install --with-deps
+
+          for app in "${frontend_apps[@]}"; do
+            echo "Running E2E for ${app}"
+            pnpm --filter "./apps/${app}" run e2e
+          done
+
+      - name: Upload Playwright reports (preview gate)
+        if: always() && steps.detect_changed_apps.outputs.deploy_skipped != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-preview-gate
+          path: apps/*/playwright-report/
+          retention-days: 14
+
       - name: Deploy affected apps preview with Turbo
         id: deploy_preview
         if: steps.detect_changed_apps.outputs.deploy_skipped != 'true'

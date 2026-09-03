@@ -1,0 +1,89 @@
+name: E2E Frontend
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: e2e-frontend-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-frontend-apps:
+    name: Detect frontend apps with Playwright
+    runs-on: ubuntu-latest
+    outputs:
+      frontend_apps_json: ${{ steps.discover.outputs.frontend_apps_json }}
+      has_targets: ${{ steps.discover.outputs.has_targets }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Discover targets
+        id: discover
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t app_dirs < <(find apps -mindepth 1 -maxdepth 1 -type d -print | sort)
+          json_items=()
+
+          for app_dir in "${app_dirs[@]}"; do
+            if [[ -f "${app_dir}/playwright.config.ts" ]]; then
+              app_name="${app_dir#apps/}"
+              json_items+=("\"${app_name}\"")
+            fi
+          done
+
+          if [[ ${#json_items[@]} -eq 0 ]]; then
+            echo "frontend_apps_json=[]" >> "${GITHUB_OUTPUT}"
+            echo "has_targets=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "frontend_apps_json=[$(IFS=,; echo "${json_items[*]}")]" >> "${GITHUB_OUTPUT}"
+          echo "has_targets=true" >> "${GITHUB_OUTPUT}"
+
+  e2e:
+    name: E2E (${{ matrix.app }})
+    needs: detect-frontend-apps
+    if: needs.detect-frontend-apps.outputs.has_targets == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.detect-frontend-apps.outputs.frontend_apps_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: pnpm --filter "./apps/${{ matrix.app }}" run e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.app }}
+          path: apps/${{ matrix.app }}/playwright-report/
+          retention-days: 30

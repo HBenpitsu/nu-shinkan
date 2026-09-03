@@ -34,10 +34,21 @@ pnpm --filter @repo/organization-content-service run deploy:staging
 
 1. pull_request イベントで preview deploy が自動実行される。
 2. 変更appのみが対象になる。
-3. PR番号は PR_NUMBER として preview 生成名に反映される。
+3. deploy 前に、変更された frontend app（`playwright.config.ts` を持つ app）の E2E が必須で実行される。
+4. frontend 対象が 0 件のときは E2E は skip 扱いで deploy を継続する。
+5. PR番号は PR_NUMBER として preview 生成名に反映される。
 
 対象 workflow:
 - .github/workflows/deploy-preview-by-pr.yml
+
+## Frontend E2E（ルート統合）
+
+1. frontend E2E はルート workflow で一元管理する。
+2. app 配下や template 配下の `.github/workflows` は持たない。
+3. `apps/*` を走査し、`playwright.config.ts` がある app を自動で対象化する。
+
+対象 workflow:
+- .github/workflows/e2e-frontend.yml
 
 ## PRコメント自動化
 

@@ -23,6 +23,57 @@ export function listApps(): string[] {
     .filter(Boolean);
 }
 
+type TurboTask = {
+  taskId?: string;
+  directory?: string;
+  command?: string;
+};
+
+type TurboDryRunResult = {
+  tasks?: TurboTask[];
+};
+
+export function detectChangedAppsWithTurbo(
+  baseSha: string,
+  deployTask: string,
+): string[] {
+  const raw = execFileSync(
+    "pnpm",
+    [
+      "turbo",
+      "run",
+      deployTask,
+      "--filter=./apps/*",
+      `--filter=[${baseSha}]`,
+      "--dry-run=json",
+    ],
+    {
+      encoding: "utf8",
+      cwd: repoRoot,
+    },
+  );
+
+  const parsed = JSON.parse(raw) as TurboDryRunResult;
+  const changedApps = new Set<string>();
+
+  for (const task of parsed.tasks ?? []) {
+    if (!task.directory?.startsWith("apps/")) {
+      continue;
+    }
+
+    if (task.command === "<NONEXISTENT>") {
+      continue;
+    }
+
+    const appName = task.directory.slice("apps/".length).split("/")[0];
+    if (appName) {
+      changedApps.add(appName);
+    }
+  }
+
+  return [...changedApps].sort();
+}
+
 export function splitCsv(value: string | undefined): string[] {
   return (value ?? "")
     .split(",")
