@@ -1,5 +1,5 @@
 {
-  "name": "backend-template",
+  "name": "@repo/backend-template",
   "type": "module",
   "scripts": {
     "test": "vitest",
