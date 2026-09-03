@@ -21,10 +21,11 @@ import {
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
+import { spawnSync } from "node:child_process";
 import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
 import {
   askQuestion,
-  maybeInstallDependencies,
+  installDependencies,
   normalizeAppName,
   parseScaffoldArgs,
 } from "./scaffold-shared.js";
@@ -144,7 +145,13 @@ async function main(): Promise<void> {
     updatePackageJson(targetDir, appName, port);
     updateWranglerConfig(targetDir, appName, port);
 
-    await maybeInstallDependencies(targetDir, args, rl);
+    await installDependencies(targetDir, args);
+
+    spawnSync("pnpm", ["cf-typegen"], {
+      cwd: targetDir,
+      stdio: "inherit",
+      shell: false,
+    });
 
     console.log(`\n✅ backend app created: apps/${appName} (port: ${port})`);
   } finally {

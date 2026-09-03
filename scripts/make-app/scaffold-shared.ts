@@ -76,21 +76,14 @@ export function askQuestion(
   });
 }
 
-export async function maybeInstallDependencies(
+export async function installDependencies(
   targetDir: string,
   args: ScaffoldArgs,
-  rl: Interface,
 ): Promise<void> {
   const installChoice =
-    args.install === "false" || args.install === "no"
-      ? "n"
-      : args.install === "true" || args.install === "yes"
-        ? "y"
-        : (
-            await askQuestion(rl, "依存関係をインストールしますか？", "y")
-          ).toLowerCase();
+    args.install === "true" || args.install === "yes" ? "y" : "n";
 
-  if (installChoice === "y" || installChoice === "yes") {
+  if (installChoice === "y") {
     const installResult = spawnSync("pnpm", ["install"], {
       cwd: targetDir,
       stdio: "inherit",

@@ -24,7 +24,7 @@ import { createInterface } from "node:readline";
 import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
 import {
   askQuestion,
-  maybeInstallDependencies,
+  installDependencies,
   normalizeAppName,
   parseScaffoldArgs,
 } from "./scaffold-shared.js";
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
     updatePackageJson(targetDir, appName, port);
     updateWranglerConfig(targetDir, appName);
 
-    await maybeInstallDependencies(targetDir, args, rl);
+    await installDependencies(targetDir, args);
 
     console.log(`\n✅ frontend app created: apps/${appName} (port: ${port})`);
   } finally {
