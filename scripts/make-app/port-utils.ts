@@ -65,7 +65,12 @@ export function collectUsedPorts(appsDir: string): Set<number> {
 
   for (const appDirectory of appDirectories) {
     const appDirPath = join(appsDir, appDirectory.name);
-    const filesToCheck = ["package.json", "wrangler.jsonc", ".env", ".dev.vars"];
+    const filesToCheck = [
+      "package.json",
+      "wrangler.jsonc",
+      ".env",
+      ".dev.vars",
+    ];
 
     for (const fileName of filesToCheck) {
       const filePath = join(appDirPath, fileName);

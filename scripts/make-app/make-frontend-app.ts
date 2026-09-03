@@ -60,7 +60,9 @@ function updatePackageJson(
   );
 
   if (!didReplaceDevPort) {
-    throw new Error("package.json の dev script に --port 指定が見つかりません");
+    throw new Error(
+      "package.json の dev script に --port 指定が見つかりません",
+    );
   }
 
   packageJson.scripts.dev = updatedDevScript;
@@ -72,13 +74,10 @@ function updateWranglerConfig(targetDir: string, appName: string): void {
   const configPath = join(targetDir, "wrangler.jsonc");
   const configText = readFileSync(configPath, "utf8");
   let didReplaceName = false;
-  const updated = configText.replace(
-    /"name"\s*:\s*"[^"]*"/,
-    () => {
-      didReplaceName = true;
-      return `"name": "${appName}"`;
-    },
-  );
+  const updated = configText.replace(/"name"\s*:\s*"[^"]*"/, () => {
+    didReplaceName = true;
+    return `"name": "${appName}"`;
+  });
 
   if (!didReplaceName) {
     throw new Error("wrangler.jsonc に name フィールドが見つかりません");

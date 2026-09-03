@@ -60,7 +60,9 @@ function updatePackageJson(
   );
 
   if (!didReplaceDevPort) {
-    throw new Error("package.json の dev script に --port 指定が見つかりません");
+    throw new Error(
+      "package.json の dev script に --port 指定が見つかりません",
+    );
   }
 
   packageJson.scripts.dev = updatedDevScript;
@@ -68,30 +70,28 @@ function updatePackageJson(
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
-function updateWranglerConfig(targetDir: string, appName: string, port: number): void {
+function updateWranglerConfig(
+  targetDir: string,
+  appName: string,
+  port: number,
+): void {
   const configPath = join(targetDir, "wrangler.jsonc");
   const configText = readFileSync(configPath, "utf8");
   let didReplaceName = false;
-  const renamed = configText.replace(
-    /"name"\s*:\s*"[^"]*"/,
-    () => {
-      didReplaceName = true;
-      return `"name": "${appName}"`;
-    },
-  );
+  const renamed = configText.replace(/"name"\s*:\s*"[^"]*"/, () => {
+    didReplaceName = true;
+    return `"name": "${appName}"`;
+  });
 
   if (!didReplaceName) {
     throw new Error("wrangler.jsonc に name フィールドが見つかりません");
   }
 
   let didReplaceSelfPort = false;
-  const updated = renamed.replace(
-    /"SELF"\s*:\s*"[^"]*:\d{2,5}"/,
-    () => {
-      didReplaceSelfPort = true;
-      return `"SELF": "localhost:${port}"`;
-    },
-  );
+  const updated = renamed.replace(/"SELF"\s*:\s*"[^"]*:\d{2,5}"/, () => {
+    didReplaceSelfPort = true;
+    return `"SELF": "localhost:${port}"`;
+  });
 
   if (!didReplaceSelfPort) {
     throw new Error("wrangler.jsonc に SELF のポート設定が見つかりません");

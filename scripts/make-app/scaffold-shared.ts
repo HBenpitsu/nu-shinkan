@@ -17,10 +17,7 @@ export function normalizeAppName(value: string): string {
   return normalized;
 }
 
-export function parseScaffoldArgs(
-  args: string[],
-  usage: string,
-): ScaffoldArgs {
+export function parseScaffoldArgs(args: string[], usage: string): ScaffoldArgs {
   const result: ScaffoldArgs = {};
 
   for (let index = 0; index < args.length; index += 1) {
@@ -89,7 +86,9 @@ export async function maybeInstallDependencies(
       ? "n"
       : args.install === "true" || args.install === "yes"
         ? "y"
-        : (await askQuestion(rl, "依存関係をインストールしますか？", "y")).toLowerCase();
+        : (
+            await askQuestion(rl, "依存関係をインストールしますか？", "y")
+          ).toLowerCase();
 
   if (installChoice === "y" || installChoice === "yes") {
     const installResult = spawnSync("pnpm", ["install"], {
@@ -99,7 +98,9 @@ export async function maybeInstallDependencies(
     });
 
     if (installResult.status !== 0) {
-      throw new Error(`pnpm install に失敗しました (exit=${installResult.status})`);
+      throw new Error(
+        `pnpm install に失敗しました (exit=${installResult.status})`,
+      );
     }
   }
 }
