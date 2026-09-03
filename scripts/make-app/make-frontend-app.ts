@@ -8,7 +8,6 @@
  * 使い方:
  *   - pnpm make:frontend
  *   - pnpm make:frontend my-frontend
- *   - pnpm make:frontend my-frontend --deps backend-a,backend-b
  *   - pnpm make:frontend --no-install
  */
 
@@ -37,13 +36,12 @@ const templateDir = resolve(rootDir, "templates/frontend-template");
 function updatePackageJson(
   targetDir: string,
   appName: string,
-  extraDeps: string[],
   port: number,
 ): void {
   const packageJsonPath = join(targetDir, "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
-  packageJson.name = appName;
+  packageJson.name = `@repo/${appName}`;
   packageJson.scripts ??= {};
 
   const currentDevScript = packageJson.scripts.dev;
@@ -66,15 +64,6 @@ function updatePackageJson(
   }
 
   packageJson.scripts.dev = updatedDevScript;
-  packageJson.devDependencies ??= {};
-
-  for (const dependency of extraDeps) {
-    const trimmed = dependency.trim();
-    if (!trimmed) {
-      continue;
-    }
-    packageJson.devDependencies[trimmed] = "workspace:*";
-  }
 
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
@@ -99,12 +88,12 @@ function updateWranglerConfig(targetDir: string, appName: string): void {
 }
 
 async function main(): Promise<void> {
-  const usage = "pnpm make:frontend [app-name] [--deps backend-a,backend-b] [--no-install]";
+  const usage = "pnpm make:frontend [app-name] [--no-install]";
   const args = parseScaffoldArgs(process.argv.slice(2), usage);
 
   if (args.help) {
     console.log(
-      "Usage: tsx ./scripts/make-frontend-app.ts [app-name] [--deps backend-a,backend-b] [--no-install]",
+      "Usage: tsx ./scripts/make-frontend-app.ts [app-name] [--no-install]",
     );
     return;
   }
@@ -139,19 +128,7 @@ async function main(): Promise<void> {
 
     cpSync(templateDir, targetDir, { recursive: true, force: false });
 
-    const depInput =
-      args.deps ??
-      (await askQuestion(
-        rl,
-        "利用する backend をカンマ区切りで入力してください（後で記入する場合は，そのままエンターを入力してください）",
-        "",
-      ));
-    const deps = depInput
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    updatePackageJson(targetDir, appName, deps, port);
+    updatePackageJson(targetDir, appName, port);
     updateWranglerConfig(targetDir, appName);
 
     await maybeInstallDependencies(targetDir, args, rl);
