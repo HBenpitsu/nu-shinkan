@@ -9,14 +9,17 @@
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "make:backend": "tsx ./scripts/make-app/make-backend-app.ts",
-    "make:frontend": "tsx ./scripts/make-app/make-frontend-app.ts"
+    "make:frontend": "tsx ./scripts/make-app/make-frontend-app.ts",
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@types/node": "26.3.0",
+    "lint-staged": "^17.4.1",
     "prettier": "3.9.6",
     "tsx": "^4.23.13",
     "turbo": "^2.10.12",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "husky": "^8.0.0"
   },
   "packageManager": "pnpm@11.23.0",
   "engines": {
