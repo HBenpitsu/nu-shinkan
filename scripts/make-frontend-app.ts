@@ -11,6 +11,7 @@ import {
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
+import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const appsDir = resolve(rootDir, "apps");
@@ -91,11 +92,30 @@ function updatePackageJson(
   targetDir: string,
   appName: string,
   extraDeps: string[],
+  port: number,
 ): void {
   const packageJsonPath = join(targetDir, "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
   packageJson.name = appName;
+  packageJson.scripts ??= {};
+
+  const currentDevScript = packageJson.scripts.dev;
+
+  if (typeof currentDevScript !== "string") {
+    throw new Error("package.json に dev script が見つかりません");
+  }
+
+  const updatedDevScript = currentDevScript.replace(
+    /--port(?:=|\s+)\d{2,5}/,
+    (match) => (match.includes("=") ? `--port=${port}` : `--port ${port}`),
+  );
+
+  if (updatedDevScript === currentDevScript) {
+    throw new Error("package.json の dev script に --port 指定が見つかりません");
+  }
+
+  packageJson.scripts.dev = updatedDevScript;
   packageJson.devDependencies ??= {};
 
   for (const dependency of extraDeps) {
@@ -139,6 +159,8 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(appsDir, { recursive: true });
+  const usedPorts = collectUsedPorts(appsDir);
+  const port = findAvailablePort(usedPorts, 5173);
 
   const rl = createInterface({
     input: process.stdin,
@@ -174,7 +196,7 @@ async function main(): Promise<void> {
       .map((value) => value.trim())
       .filter(Boolean);
 
-    updatePackageJson(targetDir, appName, deps);
+    updatePackageJson(targetDir, appName, deps, port);
     updateWranglerConfig(targetDir, appName);
 
     const installChoice =
@@ -200,7 +222,7 @@ async function main(): Promise<void> {
       }
     }
 
-    console.log(`\n✅ frontend app created: apps/${appName}`);
+    console.log(`\n✅ frontend app created: apps/${appName} (port: ${port})`);
   } finally {
     rl.close();
   }

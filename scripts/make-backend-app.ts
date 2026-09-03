@@ -11,6 +11,7 @@ import {
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
+import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
 
 const rootDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const appsDir = resolve(rootDir, "apps");
@@ -91,11 +92,30 @@ function updatePackageJson(
   targetDir: string,
   appName: string,
   extraDeps: string[],
+  port: number,
 ): void {
   const packageJsonPath = join(targetDir, "package.json");
   const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
 
   packageJson.name = appName;
+  packageJson.scripts ??= {};
+
+  const currentDevScript = packageJson.scripts.dev;
+
+  if (typeof currentDevScript !== "string") {
+    throw new Error("package.json に dev script が見つかりません");
+  }
+
+  const updatedDevScript = currentDevScript.replace(
+    /--port(?:=|\s+)\d{2,5}/,
+    (match) => (match.includes("=") ? `--port=${port}` : `--port ${port}`),
+  );
+
+  if (updatedDevScript === currentDevScript) {
+    throw new Error("package.json の dev script に --port 指定が見つかりません");
+  }
+
+  packageJson.scripts.dev = updatedDevScript;
   packageJson.devDependencies ??= {};
 
   for (const dependency of extraDeps) {
@@ -109,16 +129,25 @@ function updatePackageJson(
   writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
 }
 
-function updateWranglerConfig(targetDir: string, appName: string): void {
+function updateWranglerConfig(targetDir: string, appName: string, port: number): void {
   const configPath = join(targetDir, "wrangler.jsonc");
   const configText = readFileSync(configPath, "utf8");
-  const updated = configText.replace(
+  const renamed = configText.replace(
     /"name"\s*:\s*"[^"]*"/,
     `"name": "${appName}"`,
   );
 
-  if (updated === configText) {
+  if (renamed === configText) {
     throw new Error("wrangler.jsonc に name フィールドが見つかりません");
+  }
+
+  const updated = renamed.replace(
+    /"SELF"\s*:\s*"[^"]*:\d{2,5}"/,
+    `"SELF": "localhost:${port}"`,
+  );
+
+  if (updated === renamed) {
+    throw new Error("wrangler.jsonc に SELF のポート設定が見つかりません");
   }
 
   writeFileSync(configPath, updated);
@@ -140,6 +169,8 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(appsDir, { recursive: true });
+  const usedPorts = collectUsedPorts(appsDir);
+  const port = findAvailablePort(usedPorts, 6173);
 
   const rl = createInterface({
     input: process.stdin,
@@ -175,8 +206,8 @@ async function main(): Promise<void> {
       .map((value) => value.trim())
       .filter(Boolean);
 
-    updatePackageJson(targetDir, appName, deps);
-    updateWranglerConfig(targetDir, appName);
+    updatePackageJson(targetDir, appName, deps, port);
+    updateWranglerConfig(targetDir, appName, port);
 
     const installChoice =
       args.install === "false" || args.install === "no"
@@ -201,7 +232,7 @@ async function main(): Promise<void> {
       }
     }
 
-    console.log(`\n✅ backend app created: apps/${appName}`);
+    console.log(`\n✅ backend app created: apps/${appName} (port: ${port})`);
   } finally {
     rl.close();
   }
