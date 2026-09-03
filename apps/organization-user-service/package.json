@@ -4,7 +4,9 @@
   "scripts": {
     "test": "vitest",
     "dev": "wrangler dev --host 0.0.0.0 --port 6173 --inspector-port 7173",
-    "deploy": "wrangler deploy --minify",
+    "build": "wrangler types --env-interface CloudflareBindings",
+    "deploy:release": "wrangler deploy --env release --minify",
+    "deploy:staging": "wrangler deploy --env staging --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
     "lint": "eslint ."

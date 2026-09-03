@@ -8,6 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
+    "deploy": "turbo run deploy",
     "make:backend": "tsx ./scripts/make-app/make-backend-app.ts",
     "make:frontend": "tsx ./scripts/make-app/make-frontend-app.ts",
     "prepare": "husky install"

@@ -1,0 +1,76 @@
+name: Deploy Tag
+
+on:
+  workflow_call:
+    inputs:
+      base_sha:
+        description: Base commit SHA to diff from.
+        required: true
+        type: string
+      tag_name:
+        description: Tag name used for concurrency and logging.
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy affected apps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: ${{ inputs.tag_name }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy affected apps with Turbo
+        shell: bash
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          # A moving tag update gives us the previous target commit as BASE_SHA.
+          # If this is the first tag push, BASE_SHA is empty or zeroed, so deploy all apps.
+          case "${TAG_NAME}" in
+            release)
+              DEPLOY_TASK="deploy:release"
+              ;;
+            staging)
+              DEPLOY_TASK="deploy:staging"
+              ;;
+            *)
+              echo "Unsupported tag_name: ${TAG_NAME}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ -z "${BASE_SHA}" || "${BASE_SHA}" =~ ^0+$ ]]; then
+            pnpm turbo run "${DEPLOY_TASK}" --filter="./apps/*"
+          else
+            pnpm turbo run "${DEPLOY_TASK}" --filter="./apps/*" --filter="[${BASE_SHA}]"
+          fi

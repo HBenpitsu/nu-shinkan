@@ -3,8 +3,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "dev": "wrangler dev --host 0.0.0.0 --port 6174",
-    "deploy": "wrangler deploy --minify",
+    "dev": "wrangler dev --host 0.0.0.0 --port 6174 --inspector-port 7174",
+    "build": "wrangler types --env-interface CloudflareBindings",
+    "deploy:release": "wrangler deploy --env release --minify",
+    "deploy:staging": "wrangler deploy --env staging --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
     "lint": "eslint ."

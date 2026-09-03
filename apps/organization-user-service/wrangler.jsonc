@@ -32,9 +32,14 @@
   //   "binding": "AI"
   // },
   "env": {
-    "production": {
+    "release": {
        "vars": {
          "SELF": "xxxxx"
+       }
+    },
+    "staging": {
+       "vars": {
+         "SELF": "yyyyy"
        }
     }
   },

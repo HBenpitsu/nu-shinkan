@@ -1,0 +1,14 @@
+name: Deploy Release Tag
+
+on:
+  push:
+    tags:
+      - release
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-tag.yml
+    secrets: inherit
+    with:
+      base_sha: ${{ github.event.before }}
+      tag_name: release

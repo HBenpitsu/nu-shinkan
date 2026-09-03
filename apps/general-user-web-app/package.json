@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5174",
     "build": "tsc -b && vite build",
+    "build:release": "tsc -b && VITE_DEPLOY_ENV=release vite build",
+    "build:staging": "tsc -b && VITE_DEPLOY_ENV=staging vite build",
+    "deploy:release": "pnpm run build:release && wrangler deploy --minify",
+    "deploy:staging": "pnpm run build:staging && wrangler deploy --minify",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
