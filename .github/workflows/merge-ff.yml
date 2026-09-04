@@ -1,19 +1,29 @@
 name: Merge Fast-Forward
 
 on:
-  pull_request:
-    types: [labeled]
   issue_comment:
     types: [created]
 
 jobs:
   merge:
     name: Merge Fast-Forward
-    if: (github.event.issue.pull_request && contains(github.event.comment.body, '/merge-ff')) || (github.event.label.name == 'merge-ff')
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/merge-ff')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
+      - name: Add initial reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
       - name: Validate GitHub App credentials
         shell: bash
         env:
@@ -53,6 +63,30 @@ jobs:
           set -euo pipefail
 
           git fetch origin
-          git checkout -B ${{ github.event.pull_request.base.ref }} origin/${{ github.event.pull_request.base.ref }}
-          git merge --ff-only origin/${{ github.event.pull_request.head.ref }}
-          git push origin ${{ github.event.pull_request.base.ref }}
+          git checkout -B ${{ github.event.issue.pull_request.base.ref }} origin/${{ github.event.issue.pull_request.base.ref }}
+          git merge --ff-only origin/${{ github.event.issue.pull_request.head.ref }}
+          git push origin ${{ github.event.issue.pull_request.base.ref }}
+        
+      - name: Add success reaction
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'hooray'
+            });
+
+      - name: Add failure reaction
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused'
+            });
