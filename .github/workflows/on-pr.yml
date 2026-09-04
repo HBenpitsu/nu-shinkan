@@ -19,13 +19,13 @@ jobs:
     needs: detect
     uses: ./.github/workflows/heavy-tests.yml
     with:
-      affected: ${{ needs.detect.outputs.apps_affected }}
+      affected: ${{ fromJSON(needs.detect.outputs.apps_affected) }}
       filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   light-tests:
     needs: detect
     uses: ./.github/workflows/light-tests.yml
     with:
-      affected: ${{ needs.detect.outputs.affected }}
+      affected: ${{ fromJSON(needs.detect.outputs.affected) }}
       filter_args: ${{ needs.detect.outputs.affected_filter_args }}
   e2e-report:
     needs: heavy-tests
