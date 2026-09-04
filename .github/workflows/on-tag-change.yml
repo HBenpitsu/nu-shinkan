@@ -17,13 +17,13 @@ jobs:
     uses: ./.github/workflows/heavy-tests.yml
     with:
       affected: ${{ needs.detect.outputs.apps_affected }}
-      affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
+      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   light-tests:
     needs: detect
     uses: ./.github/workflows/light-tests.yml
     with:
       affected: ${{ needs.detect.outputs.apps_affected }}
-      affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
+      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   deploy:
     needs: 
       - heavy-tests

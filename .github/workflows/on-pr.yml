@@ -14,19 +14,19 @@ jobs:
     uses: ./.github/workflows/affected-detection.yml
     with:
       base_sha: ${{ github.event.before }}
-      deploy_channel: ${{ github.ref_name }}
+      cache_channel: ${{ github.ref_name }}
   heavy-tests:
     needs: detect
     uses: ./.github/workflows/heavy-tests.yml
     with:
       affected: ${{ needs.detect.outputs.apps_affected }}
-      affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
+      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   light-tests:
     needs: detect
     uses: ./.github/workflows/light-tests.yml
     with:
-      affected: ${{ needs.detect.outputs.affected }}
-      affected_filter_args: ${{ needs.detect.outputs.filter_args }}
+      affected: ${{ needs.detect.outputs.apps_affected }}
+      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   e2e-report:
     needs: heavy-tests
     uses: ./.github/workflows/e2e-report.yml
@@ -53,7 +53,7 @@ jobs:
 
       - name: Preview Deploy for affected apps
         env:
-          FILTER: ${{ needs.detect.outputs.apps_filter_args }}
+          FILTERS: ${{ needs.detect.outputs.apps_filter_args }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         id: previews
-        run: pnpm deploy:preview $FILTER
+        run: pnpm deploy:preview $FILTERS
