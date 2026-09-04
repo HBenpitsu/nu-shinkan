@@ -1,0 +1,55 @@
+name: Retag By Commit SHA
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  merge:
+    name: Merge Fast-Forward
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Validate GitHub App credentials
+        shell: bash
+        env:
+          RETAG_APP_ID: ${{ secrets.PR_APP_ID }}
+          RETAG_APP_PRIVATE_KEY: ${{ secrets.PR_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${RETAG_APP_ID}" ]]; then
+            echo "Missing required secret: RETAG_APP_ID" >&2
+            exit 1
+          fi
+
+          if [[ -z "${RETAG_APP_PRIVATE_KEY}" ]]; then
+            echo "Missing required secret: RETAG_APP_PRIVATE_KEY" >&2
+            exit 1
+          fi
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.PR_APP_ID }}
+          private-key: ${{ secrets.PR_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Merge Fast-Forward
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin
+          git checkout ${{ github.event.pull_request.head.ref }}
+          git merge --ff-only ${{ github.event.pull_request.base.ref }}
+          git push origin ${{ github.event.pull_request.head.ref }}
