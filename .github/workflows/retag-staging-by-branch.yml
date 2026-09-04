@@ -21,10 +21,16 @@ jobs:
       contents: write
     steps:
       - name: Validate retag token
-        if: ${{ secrets.RETAG_PUSH_TOKEN == '' }}
+        shell: bash
+        env:
+          RETAG_PUSH_TOKEN: ${{ secrets.RETAG_PUSH_TOKEN }}
         run: |
-          echo "Missing required secret: RETAG_PUSH_TOKEN" >&2
-          exit 1
+          set -euo pipefail
+
+          if [[ -z "${RETAG_PUSH_TOKEN}" ]]; then
+            echo "Missing required secret: RETAG_PUSH_TOKEN" >&2
+            exit 1
+          fi
 
       - name: Checkout
         uses: actions/checkout@v4
