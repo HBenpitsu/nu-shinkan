@@ -1,0 +1,11 @@
+name: Integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: placeholder
+        run: echo "This is a placeholder step for the integration job."

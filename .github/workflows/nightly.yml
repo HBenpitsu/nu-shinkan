@@ -1,0 +1,12 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: placeholder
+        run: echo "This is a placeholder step for the nightly job."

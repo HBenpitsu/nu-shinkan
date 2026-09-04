@@ -21,33 +21,15 @@ jobs:
     permissions:
       contents: read
     outputs:
-      affected_apps:
-        description: The list of affected apps.
-        value: ${{ steps.detection.outputs.affected_apps }}
-      apps_affected:
-        description: Indicates if there are changes in the affected apps.
-        value: ${{ steps.detection.outputs.apps_affected }}
-      apps_filter_args:
-        description: The filter option arguments for turbo command, it contains all of affected apps.
-        value: ${{ steps.detection.outputs.apps_filter_args }}
-      affected_scripts:
-        description: The list of affected scripts.
-        value: ${{ steps.detection.outputs.affected_scripts }}
-      scripts_affected:
-        description: Indicates if there are changes in the affected scripts.
-        value: ${{ steps.detection.outputs.scripts_affected }}
-      scripts_filter_args:
-        description: The filter option arguments for turbo command, it contains all of affected scripts.
-        value: ${{ steps.detection.outputs.scripts_filter_args }}
-      all_affected:
-        description: The list of all affected apps and scripts.
-        value: ${{ steps.detection.outputs.all_affected }}
-      affected:
-        description: Indicates if there are changes in the affected apps or scripts.
-        value: ${{ steps.detection.outputs.affected }}
-      affected_filter_args:
-        description: The filter option arguments for turbo command, it contains all of affected apps and scripts.
-        value: ${{ steps.detection.outputs.affected_filter_args }}
+      affected_apps: ${{ steps.detection.outputs.affected_apps }}
+      apps_affected: ${{ steps.detection.outputs.apps_affected }}
+      apps_filter_args: ${{ steps.detection.outputs.apps_filter_args }}
+      affected_scripts: ${{ steps.detection.outputs.affected_scripts }}
+      scripts_affected: ${{ steps.detection.outputs.scripts_affected }}
+      scripts_filter_args: ${{ steps.detection.outputs.scripts_filter_args }}
+      all_affected: ${{ steps.detection.outputs.all_affected }}
+      affected: ${{ steps.detection.outputs.affected }}
+      affected_filter_args: ${{ steps.detection.outputs.affected_filter_args }}
     steps:
       - name: Setup
         uses: ./.github/actions/setup

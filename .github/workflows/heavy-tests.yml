@@ -31,8 +31,8 @@ jobs:
 
       - name: Run E2E tests
         env:
-          FILTER_ARGS: ${{ inputs.filter_args }}
-        run: pnpm e2e ${{ FILTER_ARGS }}
+          FILTERS: ${{ inputs.filter_args }}
+        run: pnpm e2e $FILTERS
       
       - name: Collect E2E Reports
         run: pnpm tsx ./.github/scripts/collect-e2e-reports.ts

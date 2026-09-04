@@ -28,8 +28,8 @@ jobs:
       
       - name: Run Lint
         env:
-          FILTER_ARGS: ${{ inputs.filter_args }}
-        run: pnpm lint ${{ FILTER_ARGS }}
+          FILTERS: ${{ inputs.filter_args }}
+        run: pnpm lint $FILTERS
     
   unit:
     name: Unit Tests
@@ -46,5 +46,5 @@ jobs:
       
       - name: Run Unit Tests
         env:
-          FILTER_ARGS: ${{ inputs.filter_args }}
-        run: pnpm test ${{ FILTER_ARGS }}
+          FILTERS: ${{ inputs.filter_args }}
+        run: pnpm test $FILTERS
