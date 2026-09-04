@@ -33,8 +33,15 @@ function read(): RuntimeVariables {
     apps: config.apps[basename(cwd())] ?? ({} as EnvironmentVariableOptions),
   };
 }
+function empty(): RuntimeVariables {
+  return {
+    globals: { local: {}, release: {}, staging: {} },
+    apps: { local: {}, release: {}, staging: {} },
+  };
+}
 
 export const runtimeConfig = {
   exists,
   read,
+  empty,
 };

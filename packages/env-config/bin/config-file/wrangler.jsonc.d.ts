@@ -1,3 +1,4 @@
+import type { RecordEntry } from "../shared-helper.js";
 export type WranglerObject = {
     name: string;
     vars: {
@@ -7,7 +8,7 @@ export type WranglerObject = {
         [key: string]: object;
     };
 } | {
-    [key: string]: string;
+    [key: string]: RecordEntry;
 };
 declare function exists(): boolean;
 declare function read(): WranglerObject;

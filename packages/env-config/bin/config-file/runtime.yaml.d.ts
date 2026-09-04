@@ -21,9 +21,11 @@ export type RuntimeVariables = {
 };
 declare function exists(): boolean;
 declare function read(): RuntimeVariables;
+declare function empty(): RuntimeVariables;
 export declare const runtimeConfig: {
     exists: typeof exists;
     read: typeof read;
+    empty: typeof empty;
 };
 export {};
 //# sourceMappingURL=runtime.yaml.d.ts.map

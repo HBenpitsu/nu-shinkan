@@ -1,10 +1,13 @@
 import { cwd } from "process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { isRecord } from "../shared-helper.js";
+import type { RecordEntry } from "../shared-helper.js";
 import {
   applyEdits,
   modify as modifyJsonc,
   parse as parseJsonc,
 } from "jsonc-parser";
+import { dirname } from "path";
 
 const src = `${cwd()}/wrangler.jsonc`;
 const gen = `${cwd()}/.generated/wrangler.jsonc`;
@@ -15,7 +18,7 @@ export type WranglerObject =
       vars: { [key: string]: string };
       env: { [key: string]: object };
     }
-  | { [key: string]: string };
+  | { [key: string]: RecordEntry };
 
 function exists(): boolean {
   return existsSync(src);
@@ -43,6 +46,11 @@ function patch(original: string, values: Partial<WranglerObject>): string {
     if (value === undefined) continue;
 
     if (["vars", "env"].includes(key)) {
+      if (!isRecord(value)) {
+        throw new Error(
+          `Expected ${key} to be a record, but got a non-record value ${JSON.stringify(value)}.`,
+        );
+      }
       for (const [subKey, subValue] of Object.entries(value)) {
         if (subValue === undefined) continue;
         const nextEdits = modifyJsonc(original, [key, subKey], subValue, {
@@ -66,6 +74,9 @@ function modify(values: Partial<WranglerObject>) {
   writeFileSync(src, patchedContent, "utf-8");
 }
 function generate(values: WranglerObject) {
+  if (!existsSync(dirname(gen))) {
+    mkdirSync(dirname(gen), { recursive: true });
+  }
   const content = JSON.stringify(values, null, 2) + "\n";
   writeFileSync(gen, content, "utf-8");
 }

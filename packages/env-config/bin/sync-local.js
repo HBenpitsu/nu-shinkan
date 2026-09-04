@@ -1,6 +1,14 @@
+/**
+ * env:syncのエントリポイント
+ * runtime.yamlに設定したローカル環境変数を各パッケージに同期する．
+ */
 import { runtimeConfig } from "./config-file/runtime.yaml.js";
 import { dotenv } from "./config-file/dotenv.js";
 import { wranglerJsonc } from "./config-file/wrangler.jsonc.js";
+import { isRecord } from "./shared-helper.js";
+/**
+ * CLI Arguments
+ */
 const argv = process.argv.map((arg) => arg.toLowerCase());
 const dryRun = ["--check", "--dry-run", "--dry", "--simulate"]
   .map((arg) => argv.includes(arg))
@@ -8,6 +16,9 @@ const dryRun = ["--check", "--dry-run", "--dry", "--simulate"]
 const silent = ["--silent", "--quiet"]
   .map((arg) => argv.includes(arg))
   .some(Boolean);
+/**
+ * Main logic
+ **/
 function main() {
   if (!runtimeConfig.exists()) return;
   const runtimeConfigData = runtimeConfig.read();
@@ -45,10 +56,11 @@ function patchWranglerJsonc(overrides) {
   };
   if (!silent) {
     const originalData = wranglerJsonc.read().vars;
-    if (typeof originalData === "string")
+    if (!isRecord(originalData)) {
       throw new Error(
-        "Expected originalData to be an object, but got a string.",
+        "Expected originalData to be an object, but got a non-object value.",
       );
+    }
     const { overridenKeys, newKeys } = differentKeys(
       originalData,
       overrideData,
@@ -59,6 +71,9 @@ function patchWranglerJsonc(overrides) {
   wranglerJsonc.modify({ vars: overrideData });
   return msg;
 }
+/**
+ * Helpers
+ **/
 function differentKeys(originalData, overrideData) {
   const overridenKeys = Object.entries(originalData)
     .filter(
@@ -71,6 +86,9 @@ function differentKeys(originalData, overrideData) {
   );
   return { overridenKeys, newKeys };
 }
+/**
+ * Entry point
+ **/
 try {
   main();
 } catch (error) {

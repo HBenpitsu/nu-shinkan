@@ -1,5 +1,6 @@
 import { cwd } from "process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname } from "path";
 const src = `${cwd()}/.env.development`;
 const gen = `${cwd()}/.generated/.env.deploy`;
 function exists() {
@@ -53,6 +54,9 @@ function modify(values) {
   writeFileSync(src, patchedContent, "utf-8");
 }
 function generate(values) {
+  if (!existsSync(dirname(gen))) {
+    mkdirSync(dirname(gen), { recursive: true });
+  }
   const content = Object.entries(values)
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");

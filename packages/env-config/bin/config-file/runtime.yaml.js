@@ -16,7 +16,14 @@ function read() {
     apps: config.apps[basename(cwd())] ?? {},
   };
 }
+function empty() {
+  return {
+    globals: { local: {}, release: {}, staging: {} },
+    apps: { local: {}, release: {}, staging: {} },
+  };
+}
 export const runtimeConfig = {
   exists,
   read,
+  empty,
 };
