@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "bin": {
-    "env-config-materialize": "./bin/materialize.mjs",
-    "env-config-sync-local": "./bin/sync-local.mjs"
+    "env:materialize": "./bin/materialize.mjs",
+    "env:sync": "./bin/sync-local.mjs"
   }
 }

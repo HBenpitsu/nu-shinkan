@@ -2,11 +2,6 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**"]
-    },
     "lint": {
       "dependsOn": ["^lint"]
     },
@@ -25,14 +20,17 @@
     },
     "deploy:release": {
       "cache": false,
+      "dependsOn": ["^predeploy:release"],
       "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
     },
     "deploy:staging": {
       "cache": false,
+      "dependsOn": ["^predeploy:staging"],
       "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
     },
     "deploy:preview": {
       "cache": false,
+      "dependsOn": ["^predeploy:preview"],
       "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PR_NUMBER"]
     }
   }

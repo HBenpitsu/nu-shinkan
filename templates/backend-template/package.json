@@ -4,10 +4,12 @@
   "scripts": {
     "test": "vitest",
     "dev": "wrangler dev --host 0.0.0.0 --port 6173 --inspector-port 9229",
-    "build": "wrangler types --env-interface CloudflareBindings",
-    "deploy:release": "pnpm exec env-config-materialize --env release && wrangler deploy --config .generated/wrangler.release.jsonc --minify",
-    "deploy:staging": "pnpm exec env-config-materialize --env staging && wrangler deploy --config .generated/wrangler.staging.jsonc --minify",
-    "deploy:preview": "pnpm exec env-config-materialize --env preview && wrangler deploy --config .generated/wrangler.preview.jsonc --minify",
+    "predeploy:release": "env:materialize --env release",
+    "predeploy:staging": "env:materialize --env staging",
+    "predeploy:preview": "env:materialize --env preview",
+    "deploy:release": "wrangler deploy --config .generated/wrangler.release.jsonc --minify",
+    "deploy:staging": "wrangler deploy --config .generated/wrangler.staging.jsonc --minify",
+    "deploy:preview": "wrangler deploy --config .generated/wrangler.preview.jsonc --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
     "lint": "eslint ."
