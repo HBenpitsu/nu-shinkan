@@ -14,23 +14,38 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Validate retag token
+      - name: Validate GitHub App credentials
         shell: bash
         env:
-          RETAG_PUSH_TOKEN: ${{ secrets.RETAG_PUSH_TOKEN }}
+          RETAG_APP_ID: ${{ secrets.RETAG_APP_ID }}
+          RETAG_APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
         run: |
           set -euo pipefail
 
-          if [[ -z "${RETAG_PUSH_TOKEN}" ]]; then
-            echo "Missing required secret: RETAG_PUSH_TOKEN" >&2
+          if [[ -z "${RETAG_APP_ID}" ]]; then
+            echo "Missing required secret: RETAG_APP_ID" >&2
             exit 1
           fi
+
+          if [[ -z "${RETAG_APP_PRIVATE_KEY}" ]]; then
+            echo "Missing required secret: RETAG_APP_PRIVATE_KEY" >&2
+            exit 1
+          fi
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RETAG_APP_ID }}
+          private-key: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RETAG_PUSH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Move release tag to staging commit
         shell: bash
