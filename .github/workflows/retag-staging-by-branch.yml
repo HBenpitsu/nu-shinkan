@@ -20,10 +20,17 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Validate retag token
+        if: ${{ secrets.RETAG_PUSH_TOKEN == '' }}
+        run: |
+          echo "Missing required secret: RETAG_PUSH_TOKEN" >&2
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RETAG_PUSH_TOKEN }}
 
       - name: Move staging tag to branch head
         shell: bash
