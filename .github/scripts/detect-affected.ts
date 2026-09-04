@@ -12,6 +12,8 @@
 import { execFileSync } from "node:child_process";
 import { env } from "node:process";
 
+type singlevalue = string | number | boolean | null;
+
 export type TurboTask = {
   directory?: string;
   cache?: { status?: string };
@@ -46,12 +48,12 @@ export function buildAffectedResult(
 }
 
 export function serializeGitHubOutput(
-  outputs: Record<string, string>,
+  outputs: Record<string, singlevalue>,
 ): string[] {
   return Object.entries(outputs).map(([key, value]) => `${key}=${value}`);
 }
 
-function writeGitHubOutput(outputs: Record<string, string>): void {
+function writeGitHubOutput(outputs: Record<string, singlevalue>): void {
   for (const line of serializeGitHubOutput(outputs)) {
     process.stdout.write(`${line}\n`);
   }
@@ -64,17 +66,17 @@ function main() {
 
   writeGitHubOutput({
     affected_apps: JSON.stringify(affected.apps),
-    apps_affected: String(affected.apps.length > 0),
+    apps_affected: affected.apps.length > 0,
     apps_filter_args: affected.apps
       .map((app) => `--filter="./${app}"`)
       .join(" "),
     affected_scripts: JSON.stringify(affected.scripts),
-    scripts_affected: String(affected.scripts.length > 0),
+    scripts_affected: affected.scripts.length > 0,
     scripts_filter_args: affected.scripts
       .map((script) => `--filter="./${script}"`)
       .join(" "),
     all_affected: JSON.stringify(affected.whole),
-    affected: String(affected.whole.length > 0),
+    affected: affected.whole.length > 0,
     affected_filter_args: affected.whole
       .map((item) => `--filter="./${item}"`)
       .join(" "),
