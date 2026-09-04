@@ -61,7 +61,7 @@ function patch(original: string, values: Partial<WranglerConfig>): string {
   }
 
   // patch services next
-  const serviceBindingMap = (values.services ?? []).reduce(
+  const serviceBindingMap = (services ?? []).reduce(
     (acc, { binding, service }) => {
       acc[binding] = service;
       return acc;
@@ -84,10 +84,11 @@ function patch(original: string, values: Partial<WranglerConfig>): string {
     }
   }
   // the rest
+  let length_count = (originalModel.services ?? []).length;
   for (const [binding, service] of Object.entries(serviceBindingMap)) {
     const nextEdits = modifyJsonc(
       original,
-      ["services", (originalModel.services ?? []).length, "binding"],
+      ["services", length_count, "binding"],
       binding,
       {
         formattingOptions,
@@ -97,13 +98,14 @@ function patch(original: string, values: Partial<WranglerConfig>): string {
 
     const nextEditsService = modifyJsonc(
       original,
-      ["services", (originalModel.services ?? []).length - 1, "service"],
+      ["services", length_count, "service"],
       service,
       {
         formattingOptions,
       },
     );
     original = applyEdits(original, nextEditsService);
+    length_count++;
   }
 
   // patch the rest of the fields last
