@@ -31,6 +31,7 @@ runs:
           cache: pnpm
 
       - name: Install dependencies
+        shell: bash
         run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Prepare Turbo Cache Readonly
