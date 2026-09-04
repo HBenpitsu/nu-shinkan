@@ -29,6 +29,9 @@ jobs:
       filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   e2e-report:
     needs: heavy-tests
+    permissions:
+      actions: read
+      pull-requests: write
     uses: ./.github/workflows/e2e-report.yml
   deploy-preview:
     needs: 
