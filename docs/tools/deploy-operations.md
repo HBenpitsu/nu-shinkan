@@ -33,13 +33,14 @@ pnpm --filter @repo/organization-content-service run deploy:staging
 ## PR Preview 自動化
 
 1. pull_request イベントで preview deploy が自動実行される。
-2. 変更appのみが対象になる。
+2. 対象選定は base branch 差分を基準に行い、変更appのみを対象にする。
 3. deploy 前に、変更された frontend app（`playwright.config.ts` を持つ app）の E2E が必須で実行される。
 4. frontend 対象が 0 件のときは E2E は skip 扱いで deploy を継続する。
-5. PR番号は PR_NUMBER として preview 生成名に反映される。
+5. PR番号は PR_NUMBER として preview 生成名 `-preview-pr-{PR_NUMBER}` に反映される。
 
 対象 workflow:
-- .github/workflows/deploy-preview-by-pr.yml
+
+- .github/workflows/on-pr.yml
 
 ## Frontend E2E（ルート統合）
 
@@ -48,6 +49,7 @@ pnpm --filter @repo/organization-content-service run deploy:staging
 3. `apps/*` を走査し、`playwright.config.ts` がある app を自動で対象化する。
 
 対象 workflow:
+
 - .github/workflows/e2e-frontend.yml
 
 ## PRコメント自動化
@@ -82,8 +84,8 @@ cat apps/organization-web-app/.generated/.env.preview
 4. 対象appで dry-run
 
 ```sh
-pnpm --filter @repo/organization-content-service run deploy:preview --dry-run
-pnpm turbo run deploy:preview --filter=./apps/organization-content-service --dry-run=json
+TURBO_SCM_BASE=<base_sha> TURBO_SCM_HEAD=<head_sha> pnpm turbo run deploy --affected --only --filter=./apps/organization-content-service --dry-run=json
+TURBO_SCM_BASE=<base_sha> TURBO_SCM_HEAD=<head_sha> pnpm turbo run dev --affected --dry-run=json
 ```
 
 ## 設定ファイル

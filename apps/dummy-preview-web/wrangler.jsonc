@@ -1,0 +1,38 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "dummy-preview-web",
+	"compatibility_date": "2026-08-25",
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": "./dist"
+	},
+	"env": {
+		"release": {
+			"services": [
+				{
+					"binding": "DUMMY_PREVIEW_API",
+					"service": "dummy-preview-api"
+				}
+			]
+		},
+		"staging": {
+			"services": [
+				{
+					"binding": "DUMMY_PREVIEW_API",
+					"service": "dummy-preview-api"
+				}
+			]
+		},
+		"preview": {}
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}
