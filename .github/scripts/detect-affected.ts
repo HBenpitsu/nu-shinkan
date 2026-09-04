@@ -23,42 +23,6 @@ export type TurboJson = {
   tasks?: TurboTask[];
 };
 
-export function collectMissedTasks(stdout: string): string[] {
-  const parsed = JSON.parse(stdout) as TurboJson;
-
-  return (parsed.tasks ?? [])
-    .filter(
-      (task) =>
-        typeof task.directory === "string" && task.cache?.status === "MISS",
-    )
-    .map((task) => task.directory as string)
-    .filter((value, index, values) => values.indexOf(value) === index)
-    .sort();
-}
-
-export function buildAffectedResult(
-  apps: string[],
-  whole: string[],
-): { apps: string[]; whole: string[]; scripts: string[] } {
-  return {
-    apps,
-    whole,
-    scripts: whole.filter((value) => !apps.includes(value)),
-  };
-}
-
-export function serializeGitHubOutput(
-  outputs: Record<string, singlevalue>,
-): string[] {
-  return Object.entries(outputs).map(([key, value]) => `${key}=${value}`);
-}
-
-function writeGitHubOutput(outputs: Record<string, singlevalue>): void {
-  for (const line of serializeGitHubOutput(outputs)) {
-    process.stdout.write(`${line}\n`);
-  }
-}
-
 function main() {
   const base = env.BASE_SHA?.trim() ?? "";
   const { apps, whole } = getAffected(base);
@@ -81,10 +45,6 @@ function main() {
       .map((item) => `--filter="./${item}"`)
       .join(" "),
   });
-}
-
-if (env.VITEST !== "true") {
-  main();
 }
 
 function getAffected(base: string): { apps: string[]; whole: string[] } {
@@ -136,4 +96,38 @@ function getAffected(base: string): { apps: string[]; whole: string[] } {
   }
 
   return result;
+}
+
+export function collectMissedTasks(stdout: string): string[] {
+  const parsed = JSON.parse(stdout) as TurboJson;
+
+  return (parsed.tasks ?? [])
+    .filter(
+      (task) =>
+        typeof task.directory === "string" && task.cache?.status === "MISS",
+    )
+    .map((task) => task.directory as string)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .sort();
+}
+
+export function buildAffectedResult(
+  apps: string[],
+  whole: string[],
+): { apps: string[]; whole: string[]; scripts: string[] } {
+  return {
+    apps,
+    whole,
+    scripts: whole.filter((value) => !apps.includes(value)),
+  };
+}
+
+function writeGitHubOutput(outputs: Record<string, singlevalue>): void {
+  for (const [key, value] of Object.entries(outputs)) {
+    process.stdout.write(`${key}=${value}\n`);
+  }
+}
+
+if (env.VITEST !== "true") {
+  main();
 }

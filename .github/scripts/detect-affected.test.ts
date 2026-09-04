@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildAffectedResult,
-  collectMissedTasks,
-  serializeGitHubOutput,
-} from "./detect-affected.js";
+import { buildAffectedResult, collectMissedTasks } from "./detect-affected.js";
 
 describe("detect affected", () => {
   it("should collect turbo tasks whose cache status is MISS", () => {
@@ -32,9 +28,5 @@ describe("detect affected", () => {
       whole: ["apps/web-app", "scripts/sync-local"],
       scripts: ["scripts/sync-local"],
     });
-
-    expect(serializeGitHubOutput({ affected_apps: "apps/web-app" })).toEqual([
-      "affected_apps=apps/web-app",
-    ]);
   });
 });
