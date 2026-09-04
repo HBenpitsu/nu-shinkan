@@ -9,77 +9,129 @@
  * ビルド時環境変数として BASE_SHA が提供される．
  */
 
-import { env } from "process";
-import { execSync as exec } from "child_process";
+import { execFileSync } from "node:child_process";
+import { env } from "node:process";
+
+export type TurboTask = {
+  directory?: string;
+  cache?: { status?: string };
+};
+
+export type TurboJson = {
+  tasks?: TurboTask[];
+};
+
+export function collectMissedTasks(stdout: string): string[] {
+  const parsed = JSON.parse(stdout) as TurboJson;
+
+  return (parsed.tasks ?? [])
+    .filter(
+      (task) =>
+        typeof task.directory === "string" && task.cache?.status === "MISS",
+    )
+    .map((task) => task.directory as string)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .sort();
+}
+
+export function buildAffectedResult(
+  apps: string[],
+  whole: string[],
+): { apps: string[]; whole: string[]; scripts: string[] } {
+  return {
+    apps,
+    whole,
+    scripts: whole.filter((value) => !apps.includes(value)),
+  };
+}
+
+export function serializeGitHubOutput(
+  outputs: Record<string, string>,
+): string[] {
+  return Object.entries(outputs).map(([key, value]) => `${key}=${value}`);
+}
+
+function writeGitHubOutput(outputs: Record<string, string>): void {
+  for (const line of serializeGitHubOutput(outputs)) {
+    process.stdout.write(`${line}\n`);
+  }
+}
 
 function main() {
-  const base = env.BASE_SHA ?? "";
-  const affected = extendSchema(getAffected(base));
-  process.stdout.write(`affected_apps=${affected.apps.join(" ")}\n`);
-  process.stdout.write(
-    `apps_affected=${affected.apps.length ? "true" : "false"}\n`,
-  );
-  process.stdout.write(
-    `apps_filter_args=${affected.apps.map((app) => `--filter="./${app}"`).join(" ")}\n`,
-  );
-  process.stdout.write(`affected_scripts=${affected.scripts.join(" ")}\n`);
-  process.stdout.write(
-    `scripts_affected=${affected.scripts.length ? "true" : "false"}\n`,
-  );
-  process.stdout.write(
-    `scripts_filter_args=${affected.scripts.map((script) => `--filter="./${script}"`).join(" ")}\n`,
-  );
-  process.stdout.write(`all_affected=${affected.whole.join(" ")}\n`);
-  process.stdout.write(
-    `affected=${affected.whole.length ? "true" : "false"}\n`,
-  );
-  process.stdout.write(
-    `affected_filter_args=${affected.whole.map((item) => `--filter="./${item}"`).join(" ")}\n`,
-  );
+  const base = env.BASE_SHA?.trim() ?? "";
+  const { apps, whole } = getAffected(base);
+  const affected = buildAffectedResult(apps, whole);
+
+  writeGitHubOutput({
+    affected_apps: affected.apps.join(" "),
+    apps_affected: String(affected.apps.length > 0),
+    apps_filter_args: affected.apps
+      .map((app) => `--filter="./${app}"`)
+      .join(" "),
+    affected_scripts: affected.scripts.join(" "),
+    scripts_affected: String(affected.scripts.length > 0),
+    scripts_filter_args: affected.scripts
+      .map((script) => `--filter="./${script}"`)
+      .join(" "),
+    all_affected: affected.whole.join(" "),
+    affected: String(affected.whole.length > 0),
+    affected_filter_args: affected.whole
+      .map((item) => `--filter="./${item}"`)
+      .join(" "),
+  });
 }
 
 if (env.VITEST !== "true") {
   main();
 }
 
-type turboJson = {
-  tasks: {
-    directory: string;
-    cache: { status: "MISS" | "HIT" };
-  }[];
-};
-
-function getAffected(base: string) {
+function getAffected(base: string): { apps: string[]; whole: string[] } {
   const result: { apps: string[]; whole: string[] } = { apps: [], whole: [] };
 
-  const appsExec = exec(
-    `pnpm run deploy --filter="./apps/*" --filter=[${base}] --dry=json`,
-  );
-  const appsStdout = appsExec.toString();
-  const appsParsed = JSON.parse(appsStdout) as turboJson;
+  if (!base || /^0+$/.test(base)) {
+    return result;
+  }
 
-  appsParsed.tasks.forEach((task) => {
-    if (task.cache.status === "MISS") {
-      result.apps.push(task.directory);
+  try {
+    const appsStdout = execFileSync(
+      "pnpm",
+      [
+        "turbo",
+        "run",
+        "deploy:preview",
+        "--filter=./apps/*",
+        `--filter=[${base}]`,
+        "--dry-run=json",
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    result.apps = collectMissedTasks(appsStdout).filter((value) =>
+      value.startsWith("apps/"),
+    );
+  } catch (error) {
+    console.warn(
+      `Turbo app detection failed for BASE_SHA=${base}. Falling back to empty result.`,
+    );
+    if (error instanceof Error) {
+      console.warn(error.message);
     }
-  });
+  }
 
-  const wholeExec = exec(`pnpm run dev --filter=[${base}] --dry=json`);
-  const wholeStdout = wholeExec.toString();
-  const wholeParsed = JSON.parse(wholeStdout) as turboJson;
-
-  wholeParsed.tasks.forEach((task) => {
-    if (task.cache.status === "MISS") {
-      result.whole.push(task.directory);
+  try {
+    const wholeStdout = execFileSync(
+      "pnpm",
+      ["turbo", "run", "dev", `--filter=[${base}]`, "--dry-run=json"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    );
+    result.whole = collectMissedTasks(wholeStdout);
+  } catch (error) {
+    console.warn(
+      `Turbo whole-project detection failed for BASE_SHA=${base}. Falling back to empty result.`,
+    );
+    if (error instanceof Error) {
+      console.warn(error.message);
     }
-  });
+  }
 
   return result;
-}
-
-function extendSchema(src: { apps: string[]; whole: string[] }) {
-  return {
-    ...src,
-    scripts: src.whole.filter((value) => !src.apps.includes(value)),
-  };
 }
