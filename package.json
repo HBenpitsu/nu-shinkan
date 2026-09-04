@@ -4,8 +4,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "env:materialize": "tsx ./scripts/env/materialize.ts",
-    "env:sync:local": "tsx ./scripts/env/sync-local.ts",
+    "env:sync": "turbo run env:sync",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",

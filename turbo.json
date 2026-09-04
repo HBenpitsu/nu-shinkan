@@ -18,6 +18,9 @@
     "e2e": {
       "dependsOn": ["^e2e"]
     },
+    "env:sync": {
+      "dependsOn": ["^env:sync"]
+    },
     "deploy:release": {
       "cache": false,
       "dependsOn": ["^predeploy:release"],
