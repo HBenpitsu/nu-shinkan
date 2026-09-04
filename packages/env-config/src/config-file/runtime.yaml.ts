@@ -2,6 +2,7 @@ import { readFileSync } from "fs";
 import { join, basename } from "path";
 import { cwd } from "process";
 import yaml from "yaml";
+import type { DeployChannel } from "../materialize/context.js";
 
 export type EnvironmentVariableOptions = {
   local: { [key: string]: string };
@@ -40,8 +41,26 @@ function empty(): RuntimeVariables {
   };
 }
 
+function resolve(
+  runtimeVariables: RuntimeVariables,
+  deployChannel: DeployChannel,
+): Record<string, string> {
+  if (deployChannel === "release") {
+    return {
+      ...runtimeVariables.globals.release,
+      ...runtimeVariables.apps.release,
+    };
+  }
+
+  return {
+    ...runtimeVariables.globals.staging,
+    ...runtimeVariables.apps.staging,
+  };
+}
+
 export const runtimeConfig = {
   exists,
   read,
   empty,
+  resolve,
 };

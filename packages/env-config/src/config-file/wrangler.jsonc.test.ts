@@ -10,7 +10,17 @@ describe("wrangler.jsonc patch", () => {
   "vars": {
     "EXISTING": "old",
     "OVERWRITE": "old"
-  }
+  },
+  "services": [
+    {
+      "binding": "A",
+      "service": "old"
+    },
+    {
+      "binding": "B",
+      "service": "old"
+    }
+  ]
 }`;
     const values = {
       name: "updated",
@@ -18,6 +28,16 @@ describe("wrangler.jsonc patch", () => {
         NEW_ENV: "added",
         OVERWRITE: "updated",
       },
+      services: [
+        {
+          binding: "B",
+          service: "new",
+        },
+        {
+          binding: "C",
+          service: "new",
+        },
+      ],
       NEW_BINDING: "added",
     };
     const patched = testExport.patch(original, values);
@@ -28,5 +48,13 @@ describe("wrangler.jsonc patch", () => {
     expect(parseJsonc(patched)["vars"]["EXISTING"]).toBe("old");
     expect(parseJsonc(patched)["vars"]["OVERWRITE"]).toBe("updated");
     expect(parseJsonc(patched)["vars"]["NEW_ENV"]).toBe("added");
+
+    expect(parseJsonc(patched)["services"]).toHaveLength(3);
+    expect(parseJsonc(patched)["services"][0]["binding"]).toBe("A");
+    expect(parseJsonc(patched)["services"][0]["service"]).toBe("old");
+    expect(parseJsonc(patched)["services"][1]["binding"]).toBe("B");
+    expect(parseJsonc(patched)["services"][1]["service"]).toBe("new");
+    expect(parseJsonc(patched)["services"][2]["binding"]).toBe("C");
+    expect(parseJsonc(patched)["services"][2]["service"]).toBe("new");
   });
 });

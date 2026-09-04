@@ -6,7 +6,6 @@
 import { runtimeConfig, RuntimeVariables } from "./config-file/runtime.yaml.js";
 import { dotenv } from "./config-file/dotenv.js";
 import { wranglerJsonc } from "./config-file/wrangler.jsonc.js";
-import { isRecord, RecordEntry } from "./shared-helper.js";
 
 /**
  * CLI Arguments
@@ -68,13 +67,8 @@ function patchWranglerJsonc(overrides: RuntimeVariables): object[] {
 
   if (!silent) {
     const originalData = wranglerJsonc.read().vars;
-    if (!isRecord(originalData)) {
-      throw new Error(
-        "Expected originalData to be an object, but got a non-object value.",
-      );
-    }
     const { overridenKeys, newKeys } = differentKeys(
-      originalData,
+      originalData ?? {},
       overrideData,
     );
     msg = [{ task: "wrangler vars update", overridenKeys, newKeys }];
@@ -89,8 +83,8 @@ function patchWranglerJsonc(overrides: RuntimeVariables): object[] {
  * Helpers
  **/
 function differentKeys(
-  originalData: Record<string, RecordEntry>,
-  overrideData: Record<string, RecordEntry>,
+  originalData: Record<string, string>,
+  overrideData: Record<string, string>,
 ) {
   const overridenKeys = Object.entries(originalData)
     .filter(

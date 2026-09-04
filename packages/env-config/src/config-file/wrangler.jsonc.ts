@@ -1,7 +1,5 @@
 import { cwd } from "process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { isRecord } from "../shared-helper.js";
-import type { RecordEntry } from "../shared-helper.js";
 import {
   applyEdits,
   modify as modifyJsonc,
@@ -12,68 +10,119 @@ import { dirname } from "path";
 const src = `${cwd()}/wrangler.jsonc`;
 const gen = `${cwd()}/.generated/wrangler.jsonc`;
 
-export type WranglerObject =
-  | {
-      name: string;
-      vars: { [key: string]: string };
-      env: { [key: string]: object };
-    }
-  | { [key: string]: RecordEntry };
+type WranglerConfigSchema<SUB> = {
+  name: string;
+  vars?: Record<string, string>;
+  env?: Record<string, SUB>;
+  services?: { binding: string; service: string }[];
+} & Record<string, object | string>;
+export type WranglerConfig =
+  WranglerConfigSchema<WranglerConfigSchema<void> | void>;
 
 function exists(): boolean {
   return existsSync(src);
 }
-function read(): WranglerObject {
+function read(): WranglerConfig {
   const content = readFileSync(src, "utf-8");
-  const parsed = parseJsonc(content) as WranglerObject;
-  if (typeof parsed.vars === "string")
-    throw new Error("Expected parsed.vars to be an object, but got a string.");
-  if (typeof parsed.env === "string")
-    throw new Error("Expected parsed.env to be an object, but got a string.");
-  return {
-    ...parsed,
-    name: parsed.name ?? "",
-    vars: parsed.vars ?? {},
-    env: parsed.env ?? {},
-  };
+  const parsed = parseJsonc(content) as WranglerConfig;
+  return parsed;
 }
-function patch(original: string, values: Partial<WranglerObject>): string {
+function patch(original: string, values: Partial<WranglerConfig>): string {
+  const originalModel = parseJsonc(original) as WranglerConfig;
+
   const formattingOptions = {
     insertSpaces: true,
     tabSize: 2,
   };
-  for (const [key, value] of Object.entries(values)) {
-    if (value === undefined) continue;
+  const { name, vars, env, services, ...rest } = values;
 
-    if (["vars", "env"].includes(key)) {
-      if (!isRecord(value)) {
-        throw new Error(
-          `Expected ${key} to be a record, but got a non-record value ${JSON.stringify(value)}.`,
-        );
-      }
-      for (const [subKey, subValue] of Object.entries(value)) {
-        if (subValue === undefined) continue;
-        const nextEdits = modifyJsonc(original, [key, subKey], subValue, {
-          formattingOptions,
-        });
-        original = applyEdits(original, nextEdits);
-      }
-    } else {
-      const nextEdits = modifyJsonc(original, [key], value, {
+  // patch name, vars, and env first
+  if (name !== undefined) {
+    const nextEdits = modifyJsonc(original, ["name"], name, {
+      formattingOptions,
+    });
+    original = applyEdits(original, nextEdits);
+  }
+  if (vars !== undefined) {
+    for (const [key, value] of Object.entries(vars)) {
+      const nextEdits = modifyJsonc(original, ["vars", key], value, {
+        formattingOptions,
+      });
+      original = applyEdits(original, nextEdits);
+    }
+  }
+  if (env !== undefined) {
+    for (const [key, value] of Object.entries(env)) {
+      const nextEdits = modifyJsonc(original, ["env", key], value, {
         formattingOptions,
       });
       original = applyEdits(original, nextEdits);
     }
   }
 
+  // patch services next
+  const serviceBindingMap = (values.services ?? []).reduce(
+    (acc, { binding, service }) => {
+      acc[binding] = service;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+  for (const service of originalModel.services ?? []) {
+    if (Object.keys(serviceBindingMap).includes(service.binding)) {
+      // override
+      const nextEdits = modifyJsonc(
+        original,
+        ["services", originalModel.services!.indexOf(service), "service"],
+        serviceBindingMap[service.binding],
+        {
+          formattingOptions,
+        },
+      );
+      original = applyEdits(original, nextEdits);
+      delete serviceBindingMap[service.binding];
+    }
+  }
+  // the rest
+  for (const [binding, service] of Object.entries(serviceBindingMap)) {
+    const nextEdits = modifyJsonc(
+      original,
+      ["services", (originalModel.services ?? []).length, "binding"],
+      binding,
+      {
+        formattingOptions,
+      },
+    );
+    original = applyEdits(original, nextEdits);
+
+    const nextEditsService = modifyJsonc(
+      original,
+      ["services", (originalModel.services ?? []).length - 1, "service"],
+      service,
+      {
+        formattingOptions,
+      },
+    );
+    original = applyEdits(original, nextEditsService);
+  }
+
+  // patch the rest of the fields last
+  for (const [key, value] of Object.entries(rest)) {
+    if (value === undefined) continue;
+    const nextEdits = modifyJsonc(original, [key], value, {
+      formattingOptions,
+    });
+    original = applyEdits(original, nextEdits);
+  }
+
   return original;
 }
-function modify(values: Partial<WranglerObject>) {
+function modify(values: Partial<WranglerConfig>) {
   const originalContent = readFileSync(src, "utf-8");
   const patchedContent = patch(originalContent, values);
   writeFileSync(src, patchedContent, "utf-8");
 }
-function generate(values: WranglerObject) {
+function generate(values: WranglerConfig) {
   if (!existsSync(dirname(gen))) {
     mkdirSync(dirname(gen), { recursive: true });
   }
