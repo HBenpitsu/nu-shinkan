@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b",
+    "prepare": "tsc -b",
     "test": "vitest",
     "lint": "eslint . --fix",
     "compile": "eslint . --fix && vitest --run && tsc -b"

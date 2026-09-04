@@ -23,7 +23,7 @@
     },
     "deploy": {
       "cache": false,
-      "dependsOn": ["^env:sync", "^predeploy", "^deploy"],
+      "dependsOn": ["^env:sync", "^deploy"],
       "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PR_NUMBER"]
     }
   }
