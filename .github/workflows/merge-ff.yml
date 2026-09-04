@@ -1,4 +1,4 @@
-name: Retag By Commit SHA
+name: Merge Fast-Forward
 
 on:
   pull_request:
