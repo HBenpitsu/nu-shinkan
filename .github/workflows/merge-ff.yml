@@ -50,6 +50,6 @@ jobs:
           set -euo pipefail
 
           git fetch origin
-          git checkout ${{ github.event.pull_request.head.ref }}
-          git merge --ff-only ${{ github.event.pull_request.base.ref }}
-          git push origin ${{ github.event.pull_request.head.ref }}
+          git checkout -B ${{ github.event.pull_request.base.ref }} origin/${{ github.event.pull_request.base.ref }}
+          git merge --ff-only ${{ github.event.pull_request.head.ref }}
+          git push origin ${{ github.event.pull_request.base.ref }}
