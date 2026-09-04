@@ -46,7 +46,7 @@ function dynamicServiceBindingOverride(
 ): Record<string, string> {
   const overridenDotenvData: Record<string, string> = {};
   for (const [key, value] of Object.entries(dotenvData)) {
-    if (key.startsWith("BIND")) {
+    if (key.startsWith("BIND") || key.startsWith("VITE_BIND")) {
       for (const service of previewServices) {
         overridenDotenvData[key] = value.replace(
           service,

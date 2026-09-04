@@ -6,9 +6,9 @@
   "scripts": {
     "build": "tsc -b",
     "prepare": "tsc -b",
-    "test": "vitest",
+    "test": "vitest src/",
     "lint": "eslint . --fix",
-    "compile": "eslint . --fix && vitest --run && tsc -b"
+    "compile": "eslint . --fix && vitest src/ --run && tsc -b"
   },
   "bin": {
     "materialize": "./bin/materialize.js",
