@@ -13,6 +13,34 @@ on:
           typically it is a tag name "release" or "staging".
         required: true
         type: string
+    outputs:
+      affected_apps:
+        description: JSON matrix payload for affected apps.
+        value: ${{ jobs.find_affected.outputs.affected_apps }}
+      apps_affected:
+        description: Whether app packages are affected.
+        value: ${{ jobs.find_affected.outputs.apps_affected }}
+      apps_filter_args:
+        description: Turbo filter arguments for affected app packages.
+        value: ${{ jobs.find_affected.outputs.apps_filter_args }}
+      affected_scripts:
+        description: JSON matrix payload for affected scripts.
+        value: ${{ jobs.find_affected.outputs.affected_scripts }}
+      scripts_affected:
+        description: Whether script packages are affected.
+        value: ${{ jobs.find_affected.outputs.scripts_affected }}
+      scripts_filter_args:
+        description: Turbo filter arguments for affected script packages.
+        value: ${{ jobs.find_affected.outputs.scripts_filter_args }}
+      all_affected:
+        description: Combined affected entries from apps and scripts.
+        value: ${{ jobs.find_affected.outputs.all_affected }}
+      affected:
+        description: Whether any app or script is affected.
+        value: ${{ jobs.find_affected.outputs.affected }}
+      affected_filter_args:
+        description: Turbo filter arguments for all affected entries.
+        value: ${{ jobs.find_affected.outputs.affected_filter_args }}
 
 jobs:
   find_affected:
