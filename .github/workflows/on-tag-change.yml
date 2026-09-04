@@ -8,29 +8,26 @@ on:
 
 jobs:
   detect:
-    uses: ./.github/reusables/affected-detection.yml
+    uses: ./.github/workflows/affected-detection.yml
     with:
       base_sha: ${{ github.event.before }}
       deploy_channel: ${{ github.ref_name }}
   heavy-tests:
     needs: detect
-    uses: ./.github/reusables/heavy-tests.yml
+    uses: ./.github/workflows/heavy-tests.yml
     with:
       affected: ${{ needs.detect.outputs.apps_affected }}
       affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
   light-tests:
     needs: detect
-    uses: ./.github/reusables/light-tests.yml
+    uses: ./.github/workflows/light-tests.yml
     with:
       affected: ${{ needs.detect.outputs.apps_affected }}
       affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
-  tests:
+  deploy:
     needs: 
       - heavy-tests
       - light-tests
-  deploy:
-    needs: 
-      - tests
       - detect
     name: Deploy affected apps
     runs-on: ubuntu-latest
