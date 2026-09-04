@@ -8,131 +8,48 @@
  * 使い方:
  *   - pnpm make:frontend
  *   - pnpm make:frontend my-frontend
- *   - pnpm make:frontend --no-install
  */
 
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
-import { join, resolve } from "node:path";
+import { printHelp } from "./cli.js";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline";
-import { collectUsedPorts, findAvailablePort } from "./port-utils.js";
-import {
-  askQuestion,
-  installDependencies,
-  normalizeAppName,
-  parseScaffoldArgs,
-} from "./scaffold-shared.js";
+import { runPreplace } from "./preplace.js";
+import { runPlaceFrontend } from "./place-frontend.js";
+import { runPostplace } from "./postplace.js";
 
 const rootDir = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const appsDir = resolve(rootDir, "apps");
 const templateDir = resolve(rootDir, "templates/frontend-template");
 
-function updatePackageJson(
-  targetDir: string,
-  appName: string,
-  port: number,
-): void {
-  const packageJsonPath = join(targetDir, "package.json");
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8"));
-
-  packageJson.name = `@repo/${appName}`;
-  packageJson.scripts ??= {};
-
-  const currentDevScript = packageJson.scripts.dev;
-
-  if (typeof currentDevScript !== "string") {
-    throw new Error("package.json に dev script が見つかりません");
-  }
-
-  let didReplaceDevPort = false;
-  const updatedDevScript = currentDevScript.replace(
-    /--port(?:=|\s+)\d{2,5}/,
-    (match) => {
-      didReplaceDevPort = true;
-      return match.includes("=") ? `--port=${port}` : `--port ${port}`;
-    },
-  );
-
-  if (!didReplaceDevPort) {
-    throw new Error(
-      "package.json の dev script に --port 指定が見つかりません",
-    );
-  }
-
-  packageJson.scripts.dev = updatedDevScript;
-
-  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);
-}
-
-function updateWranglerConfig(targetDir: string, appName: string): void {
-  const configPath = join(targetDir, "wrangler.jsonc");
-  const configText = readFileSync(configPath, "utf8");
-  let didReplaceName = false;
-  const updated = configText.replace(/"name"\s*:\s*"[^"]*"/, () => {
-    didReplaceName = true;
-    return `"name": "${appName}"`;
-  });
-
-  if (!didReplaceName) {
-    throw new Error("wrangler.jsonc に name フィールドが見つかりません");
-  }
-
-  writeFileSync(configPath, updated);
-}
-
+/** Main Logic */
 async function main(): Promise<void> {
-  const usage = "pnpm make:frontend [app-name] [--no-install]";
-  const args = parseScaffoldArgs(process.argv.slice(2), usage);
-
-  if (args.help) {
-    console.log(
-      "Usage: tsx ./scripts/make-frontend-app.ts [app-name] [--no-install]",
-    );
-    return;
-  }
-
-  if (!existsSync(templateDir)) {
-    throw new Error(`テンプレートが見つかりません: ${templateDir}`);
-  }
-
-  mkdirSync(appsDir, { recursive: true });
-  const usedPorts = collectUsedPorts(appsDir);
-  const port = findAvailablePort(usedPorts, 5173);
-
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   try {
-    const requestedName =
-      args.appName ??
-      (await askQuestion(
-        rl,
-        "新しい frontend アプリ名を入力してください",
-        "my-frontend",
-      ));
-    const appName = normalizeAppName(requestedName);
-    const targetDir = resolve(appsDir, appName);
+    const preplace = await runPreplace({
+      argv: process.argv.slice(2),
+      appsDir,
+      templateDir,
+      appKind: "frontend",
+      preferredPort: 5173,
+      rl,
+    });
 
-    if (existsSync(targetDir)) {
-      throw new Error(`apps/${appName} は既に存在します`);
+    if (preplace.kind === "help") {
+      printHelp("frontend");
+      return;
     }
 
-    cpSync(templateDir, targetDir, { recursive: true, force: false });
+    const placedPlan = runPlaceFrontend(preplace.plan, templateDir);
+    runPostplace({ appKind: "frontend", targetDir: placedPlan.targetDir });
 
-    updatePackageJson(targetDir, appName, port);
-    updateWranglerConfig(targetDir, appName);
-
-    await installDependencies(targetDir, args);
-
-    console.log(`\n✅ frontend app created: apps/${appName} (port: ${port})`);
+    console.log(
+      `\n✅ frontend app created: apps/${placedPlan.appName} (port: ${placedPlan.port})`,
+    );
   } finally {
     rl.close();
   }
