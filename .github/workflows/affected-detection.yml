@@ -31,10 +31,14 @@ jobs:
       affected: ${{ steps.detection.outputs.affected }}
       affected_filter_args: ${{ steps.detection.outputs.affected_filter_args }}
     steps:
-      - name: Setup
+      - name: Deep checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Common Setup
         uses: ./.github/actions/setup
         with:
-          checkout: 'deep'
           cache_channel: ${{ inputs.cache_channel }}
           turbo_cache: 'readonly'
 

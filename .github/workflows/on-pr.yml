@@ -44,10 +44,14 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Common Setup
         uses: ./.github/actions/setup
         with:
-          checkout: 'shallow'
           deploy_channel: ${{ github.ref_name }}
           turbo_cache: 'update'
 

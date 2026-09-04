@@ -19,10 +19,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+        
       - name: Common Setup
         uses: ./.github/actions/setup
         with:
-          checkout: 'shallow'
           cache_channel: 'test'
           turbo_cache: 'readonly'
       
@@ -37,10 +41,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Common Setup
         uses: ./.github/actions/setup
         with:
-          checkout: 'shallow'
           cache_channel: 'test'
           turbo_cache: 'update'
       
