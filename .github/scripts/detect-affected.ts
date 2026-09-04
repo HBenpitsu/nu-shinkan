@@ -15,20 +15,26 @@ import { execSync as exec } from "child_process";
 function main() {
   const base = env.BASE_SHA ?? "";
   const affected = extendSchema(getAffected(base));
-  console.log(`affected_apps=${affected.apps.join(" ")}`);
-  console.log(`apps_affected=${affected.apps.length ? "true" : "false"}`);
-  console.log(
-    `apps_filter_args=${affected.apps.map((app) => `--filter="./${app}"`).join(" ")}`,
+  process.stdout.write(`affected_apps=${affected.apps.join(" ")}\n`);
+  process.stdout.write(
+    `apps_affected=${affected.apps.length ? "true" : "false"}\n`,
   );
-  console.log(`affected_scripts=${affected.scripts.join(" ")}`);
-  console.log(`scripts_affected=${affected.scripts.length ? "true" : "false"}`);
-  console.log(
-    `scripts_filter_args=${affected.scripts.map((script) => `--filter="./${script}"`).join(" ")}`,
+  process.stdout.write(
+    `apps_filter_args=${affected.apps.map((app) => `--filter="./${app}"`).join(" ")}\n`,
   );
-  console.log(`all_affected=${affected.whole.join(" ")}`);
-  console.log(`affected=${affected.whole.length ? "true" : "false"}`);
-  console.log(
-    `affected_filter_args=${affected.whole.map((item) => `--filter="./${item}"`).join(" ")}`,
+  process.stdout.write(`affected_scripts=${affected.scripts.join(" ")}\n`);
+  process.stdout.write(
+    `scripts_affected=${affected.scripts.length ? "true" : "false"}\n`,
+  );
+  process.stdout.write(
+    `scripts_filter_args=${affected.scripts.map((script) => `--filter="./${script}"`).join(" ")}\n`,
+  );
+  process.stdout.write(`all_affected=${affected.whole.join(" ")}\n`);
+  process.stdout.write(
+    `affected=${affected.whole.length ? "true" : "false"}\n`,
+  );
+  process.stdout.write(
+    `affected_filter_args=${affected.whole.map((item) => `--filter="./${item}"`).join(" ")}\n`,
   );
 }
 
