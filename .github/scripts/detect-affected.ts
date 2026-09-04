@@ -63,17 +63,17 @@ function main() {
   const affected = buildAffectedResult(apps, whole);
 
   writeGitHubOutput({
-    affected_apps: affected.apps.join(" "),
+    affected_apps: JSON.stringify(affected.apps),
     apps_affected: String(affected.apps.length > 0),
     apps_filter_args: affected.apps
       .map((app) => `--filter="./${app}"`)
       .join(" "),
-    affected_scripts: affected.scripts.join(" "),
+    affected_scripts: JSON.stringify(affected.scripts),
     scripts_affected: String(affected.scripts.length > 0),
     scripts_filter_args: affected.scripts
       .map((script) => `--filter="./${script}"`)
       .join(" "),
-    all_affected: affected.whole.join(" "),
+    all_affected: JSON.stringify(affected.whole),
     affected: String(affected.whole.length > 0),
     affected_filter_args: affected.whole
       .map((item) => `--filter="./${item}"`)
