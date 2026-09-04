@@ -23,12 +23,21 @@ runs:
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Print pnpm cache status
+        shell: bash
+        run: |
+          echo "setup-node cache-hit: ${{ steps.setup-node.outputs.cache-hit }}"
 
       - name: Install dependencies
+        env:
+          HUSKY: 0
         shell: bash
         run: pnpm install --frozen-lockfile --prefer-offline
 
