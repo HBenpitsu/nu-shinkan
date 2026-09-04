@@ -62,5 +62,6 @@ jobs:
         env:
           FILTERS: ${{ needs.detect.outputs.apps_filter_args }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          DEPLOY_CHANNEL: preview
         id: previews
-        run: pnpm deploy:preview $FILTERS
+        run: pnpm deploy $FILTERS

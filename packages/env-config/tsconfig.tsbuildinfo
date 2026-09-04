@@ -1,0 +1,1 @@
+{"root":["./src/materialize.ts","./src/sync-local.ts","./src/config-file/dotenv.test.ts","./src/config-file/dotenv.ts","./src/config-file/runtime.yaml.ts","./src/config-file/wrangler.jsonc.test.ts","./src/config-file/wrangler.jsonc.ts","./src/materialize/const.ts","./src/materialize/discover.ts","./src/materialize/generate.ts","./src/materialize/option.ts"],"version":"6.0.3"}

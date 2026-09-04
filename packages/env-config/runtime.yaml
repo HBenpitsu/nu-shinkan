@@ -6,12 +6,11 @@ globals:
 apps:
   organization-web-app:
     local:
-      SELF: localhost:5173
+      SELF: localhost:5174
     release:
       SELF: xxxxx
     staging:
       SELF: yyyyy
-    preview: {}
 
   general-user-web-app:
     local:
@@ -20,7 +19,6 @@ apps:
       SELF: xxxxx
     staging:
       SELF: yyyyy
-    preview: {}
 
   organization-content-service:
     local:
@@ -29,7 +27,6 @@ apps:
       SELF: xxxxx
     staging:
       SELF: yyyyy
-    preview: {}
 
   organization-user-service:
     local:
@@ -38,4 +35,3 @@ apps:
       SELF: xxxxx
     staging:
       SELF: yyyyy
-    preview: {}
