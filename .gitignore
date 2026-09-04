@@ -28,7 +28,7 @@ out/
 build
 dist
 .generated
-
+.artifacts
 
 # Debug
 npm-debug.log*

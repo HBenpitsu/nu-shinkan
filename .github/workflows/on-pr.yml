@@ -1,0 +1,59 @@
+name: Deploy Preview By PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: deploy-preview-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    uses: ./.github/reusables/affected-detection.yml
+    with:
+      base_sha: ${{ github.event.before }}
+      deploy_channel: ${{ github.ref_name }}
+  heavy-tests:
+    needs: detect
+    uses: ./.github/reusables/heavy-tests.yml
+    with:
+      affected: ${{ needs.detect.outputs.apps_affected }}
+      affected_filter_args: ${{ needs.detect.outputs.apps_filter_args }}
+  light-tests:
+    needs: detect
+    uses: ./.github/reusables/light-tests.yml
+    with:
+      affected: ${{ needs.detect.outputs.affected }}
+      affected_filter_args: ${{ needs.detect.outputs.filter_args }}
+  e2e-report:
+    needs: heavy-tests
+    uses: ./.github/reusables/e2e-report.yml
+  deploy-preview:
+    needs: 
+      - heavy-tests
+      - light-tests
+      - detect
+    name: Deploy preview for affected apps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: ${{ github.ref_name }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Common Setup
+        uses: ./.github/actions/setup
+        with:
+          checkout: 'shallow'
+          deploy_channel: ${{ github.ref_name }}
+          turbo_cache: 'update'
+
+      - name: Preview Deploy for affected apps
+        env:
+          FILTER: ${{ needs.detect.outputs.apps_filter_args }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        id: previews
+        run: pnpm deploy:preview $FILTER

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ---------------------------
+# git configuration
+# ---------------------------
+
 # このリポジトリでは remote のタグを正とする。
 # すでに同じ refspec があれば追加しないことで、postCreate の再実行時も重複登録を防ぐ。
 if ! git config --local --get-all remote.origin.fetch | grep -Fxq '+refs/tags/*:refs/tags/*'; then
@@ -14,3 +18,10 @@ git config --local fetch.pruneTags true
 # ここで即時 fetch して、上記設定を次回以降ではなく今この postCreate で反映させる。
 # --prune は追跡ブランチ掃除、--prune-tags は削除済みタグ掃除を行う。
 git fetch --prune --prune-tags origin
+
+# ---------------------------
+# dependencies setup
+# ---------------------------
+
+pnpm install --frozen-lockfile
+pnpm prepare

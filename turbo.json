@@ -20,6 +20,9 @@
     "test": {
       "dependsOn": ["^test"]
     },
+    "e2e": {
+      "dependsOn": ["^e2e"]
+    },
     "deploy:release": {
       "cache": false,
       "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]

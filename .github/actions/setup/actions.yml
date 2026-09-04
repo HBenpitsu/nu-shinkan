@@ -1,0 +1,73 @@
+name: Repository Setup
+description: This action defines setting up steps which is used in many workflows.
+
+inputs:
+  checkout:
+    description: checkout mode, either 'deep' or 'shallow'.
+    required: true
+    type: choice
+    options:
+      - deep
+      - shallow
+  cache_channel:
+    description: |
+      value to differentiate the cache key variants.
+      typically it is a tag name "release" or "staging".
+    required: true
+    type: string
+  turbo_cache:
+    description: Indicates whether to update the Turbo cache.
+    required: true
+    type: choice
+    options:
+      - 'readonly'
+      - 'update'
+
+runs:
+  using: "composite"
+  steps:
+      - name: Deep checkout
+        if: ${{ inputs.checkout == 'deep' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout
+        if: ${{ inputs.checkout == 'shallow' }}
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Prepare Turbo Cache Readonly
+        if: ${{ inputs.turbo_cache == 'readonly' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ inputs.cache_channel }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Prepare Turbo Cache
+        if: ${{ inputs.turbo_cache == 'update' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            .turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ inputs.cache_channel }}
+          restore-keys: turbo-${{ runner.os }}-

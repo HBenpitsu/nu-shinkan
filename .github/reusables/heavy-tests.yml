@@ -1,0 +1,45 @@
+name: Heavy Tests
+
+on:
+  workflow_call:
+    inputs:
+      affected:
+        description: Indicates if there are changes in the affected apps.
+        required: true
+        type: boolean
+      filter_args:
+        description: The filter option arguments for turbo command, it contains all of affected apps.
+        required: true
+        type: string
+
+jobs:
+  e2e:
+    name: E2E
+    if: ${{ inputs.affected }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Common Setup
+        uses: ./.github/actions/setup
+        with:
+          checkout: 'shallow'
+          cache_channel: 'test'
+          turbo_cache: 'update'
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
+
+      - name: Run E2E tests
+        env:
+          FILTER_ARGS: ${{ inputs.filter_args }}
+        run: pnpm e2e ${{ FILTER_ARGS }}
+      
+      - name: Collect E2E Reports
+        run: pnpm tsx ./.github/scripts/collect-e2e-reports.ts
+      
+      - name: upload E2E Reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-reports
+          path: e2e-reports

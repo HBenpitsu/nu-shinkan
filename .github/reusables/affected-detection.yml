@@ -1,0 +1,70 @@
+name: Affected Detection
+
+on:
+  workflow_call:
+    inputs:
+      base_sha:
+        description: Base commit SHA to diff from.
+        required: true
+        type: string
+      cache_channel:
+        description: |
+          value to differentiate the cache key variants.
+          typically it is a tag name "release" or "staging".
+        required: true
+        type: string
+
+jobs:
+  find_affected:
+    name: Find affected apps
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      affected_apps:
+        description: The list of affected apps.
+        value: ${{ steps.detection.outputs.affected_apps }}
+      apps_affected:
+        description: Indicates if there are changes in the affected apps.
+        value: ${{ steps.detection.outputs.apps_affected }}
+      apps_filter_args:
+        description: The filter option arguments for turbo command, it contains all of affected apps.
+        value: ${{ steps.detection.outputs.apps_filter_args }}
+      affected_scripts:
+        description: The list of affected scripts.
+        value: ${{ steps.detection.outputs.affected_scripts }}
+      scripts_affected:
+        description: Indicates if there are changes in the affected scripts.
+        value: ${{ steps.detection.outputs.scripts_affected }}
+      scripts_filter_args:
+        description: The filter option arguments for turbo command, it contains all of affected scripts.
+        value: ${{ steps.detection.outputs.scripts_filter_args }}
+      all_affected:
+        description: The list of all affected apps and scripts.
+        value: ${{ steps.detection.outputs.all_affected }}
+      affected:
+        description: Indicates if there are changes in the affected apps or scripts.
+        value: ${{ steps.detection.outputs.affected }}
+      affected_filter_args:
+        description: The filter option arguments for turbo command, it contains all of affected apps and scripts.
+        value: ${{ steps.detection.outputs.affected_filter_args }}
+    steps:
+      - name: Setup
+        uses: ./.github/actions/setup
+        with:
+          checkout: 'deep'
+          cache_channel: ${{ inputs.cache_channel }}
+          turbo_cache: 'readonly'
+
+      - name: Detect affected apps
+        id: detection
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+        run: pnpm tsx ./.github/scripts/detect-affected.ts  >> "$GITHUB_OUTPUT"
+
+      - name: Print affected matrix
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const raw = ${{ toJSON(steps.detection.outputs.affected_apps) }};
+            core.info(JSON.stringify(JSON.parse(raw), null, 2));
