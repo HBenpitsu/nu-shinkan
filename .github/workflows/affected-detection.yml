@@ -7,6 +7,10 @@ on:
         description: Base commit SHA to diff from.
         required: true
         type: string
+      head_sha:
+        description: Optional head commit SHA to diff to.
+        required: false
+        type: string
       cache_channel:
         description: |
           value to differentiate the cache key variants.
@@ -70,10 +74,27 @@ jobs:
           cache_channel: ${{ inputs.cache_channel }}
           turbo_cache: 'readonly'
 
+      - name: Print detection context
+        shell: bash
+        env:
+          BASE_SHA: ${{ inputs.base_sha }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: |
+          {
+            echo "## Affected detection context"
+            echo "- BASE_SHA: ${BASE_SHA}"
+            if [[ -n "${HEAD_SHA}" ]]; then
+              echo "- HEAD_SHA: ${HEAD_SHA}"
+            else
+              echo "- HEAD_SHA: <implicit checkout HEAD>"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Detect affected apps
         id: detection
         env:
           BASE_SHA: ${{ inputs.base_sha }}
+          HEAD_SHA: ${{ inputs.head_sha }}
         run: pnpm tsx ./.github/scripts/detect-affected.ts  >> "$GITHUB_OUTPUT"
 
       - name: Print affected matrix

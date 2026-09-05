@@ -13,7 +13,8 @@ jobs:
   detect:
     uses: ./.github/workflows/affected-detection.yml
     with:
-      base_sha: ${{ github.event.before }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      head_sha: ${{ github.event.pull_request.head.sha }}
       cache_channel: ${{ github.ref_name }}
   heavy-tests:
     needs: detect
@@ -64,4 +65,4 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           DEPLOY_CHANNEL: preview
         id: previews
-        run: pnpm deploy $FILTERS
+        run: pnpm turbo run deploy --only $FILTERS

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildAffectedResult, collectMissedTasks } from "./detect-affected.js";
+import {
+  buildAffectedResult,
+  buildTurboEnv,
+  buildTurboArgs,
+  collectMissedTasks,
+} from "./detect-affected.js";
 
 describe("detect affected", () => {
   it("should collect turbo tasks whose cache status is MISS", () => {
@@ -29,4 +34,30 @@ describe("detect affected", () => {
       scripts: ["scripts/sync-local"],
     });
   });
+
+  it("should build turbo args for app-only affected detection", () => {
+    expect(buildTurboArgs("apps")).toEqual([
+      "--affected",
+      "--filter=./apps/*",
+      "--dry-run=json",
+    ]);
+  });
+
+  it("should build turbo args for whole-repo affected detection", () => {
+    expect(buildTurboArgs("whole")).toEqual(["--affected", "--dry-run=json"]);
+  });
+});
+
+it("should build turbo env with explicit base and head", () => {
+  expect(buildTurboEnv("base-sha", "head-sha")).toMatchObject({
+    TURBO_SCM_BASE: "base-sha",
+    TURBO_SCM_HEAD: "head-sha",
+  });
+});
+
+it("should omit turbo head when not provided", () => {
+  expect(buildTurboEnv("base-sha", "")).toMatchObject({
+    TURBO_SCM_BASE: "base-sha",
+  });
+  expect(buildTurboEnv("base-sha", "").TURBO_SCM_HEAD).toBeUndefined();
 });

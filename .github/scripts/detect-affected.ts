@@ -6,7 +6,7 @@
  * affected_scripts, scripts_affected, scripts_filter_args,
  * all_affected, affected, affected_filter_args
  *
- * ビルド時環境変数として BASE_SHA が提供される．
+ * ビルド時環境変数として BASE_SHA と必要に応じて HEAD_SHA が提供される．
  */
 
 import { execFileSync } from "node:child_process";
@@ -25,7 +25,8 @@ export type TurboJson = {
 
 function main() {
   const base = env.BASE_SHA?.trim() ?? "";
-  const { apps, whole } = getAffected(base);
+  const head = env.HEAD_SHA?.trim() ?? "";
+  const { apps, whole } = getAffected(base, head);
   const affected = buildAffectedResult(apps, whole);
 
   writeGitHubOutput({
@@ -47,7 +48,10 @@ function main() {
   });
 }
 
-function getAffected(base: string): { apps: string[]; whole: string[] } {
+function getAffected(
+  base: string,
+  head: string,
+): { apps: string[]; whole: string[] } {
   const result: { apps: string[]; whole: string[] } = { apps: [], whole: [] };
 
   if (!base || /^0+$/.test(base)) {
@@ -55,17 +59,10 @@ function getAffected(base: string): { apps: string[]; whole: string[] } {
   }
 
   try {
-    const appsStdout = execFileSync(
-      "pnpm",
-      [
-        "turbo",
-        "run",
-        "deploy:preview",
-        "--filter=./apps/*",
-        `--filter=[${base}]`,
-        "--dry-run=json",
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    const appsStdout = execTurboDryRun(
+      "deploy",
+      buildTurboArgs("apps"),
+      buildTurboEnv(base, head),
     );
     result.apps = collectMissedTasks(appsStdout).filter((value) =>
       value.startsWith("apps/"),
@@ -80,10 +77,10 @@ function getAffected(base: string): { apps: string[]; whole: string[] } {
   }
 
   try {
-    const wholeStdout = execFileSync(
-      "pnpm",
-      ["turbo", "run", "dev", `--filter=[${base}]`, "--dry-run=json"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+    const wholeStdout = execTurboDryRun(
+      "dev",
+      buildTurboArgs("whole"),
+      buildTurboEnv(base, head),
     );
     result.whole = collectMissedTasks(wholeStdout);
   } catch (error) {
@@ -96,6 +93,36 @@ function getAffected(base: string): { apps: string[]; whole: string[] } {
   }
 
   return result;
+}
+
+export function buildTurboArgs(scope: "apps" | "whole"): string[] {
+  const args = ["--affected", "--dry-run=json"];
+
+  if (scope === "apps") {
+    args.splice(1, 0, "--filter=./apps/*");
+  }
+
+  return args;
+}
+
+export function buildTurboEnv(base: string, head: string): NodeJS.ProcessEnv {
+  return {
+    ...env,
+    TURBO_SCM_BASE: base,
+    ...(head ? { TURBO_SCM_HEAD: head } : {}),
+  };
+}
+
+function execTurboDryRun(
+  task: string,
+  args: string[],
+  turboEnv: NodeJS.ProcessEnv,
+): string {
+  return execFileSync("pnpm", ["turbo", "run", task, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    env: turboEnv,
+  });
 }
 
 export function collectMissedTasks(stdout: string): string[] {
