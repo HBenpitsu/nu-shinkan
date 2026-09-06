@@ -88,8 +88,12 @@ export class WranglerJsonc {
     this.update({ workers_dev: true });
   }
 
-  rewriteOriginal(): void {
-    writeFileSync(this.src, this.document, "utf-8");
+  rewriteOriginal(dryRun: boolean = false): void {
+    if (dryRun) {
+      console.log(`[dry-run] would save wrangler.jsonc:\n${this.document}`);
+    } else {
+      writeFileSync(this.src, this.document, "utf-8");
+    }
   }
 
   genDeployment(): void {

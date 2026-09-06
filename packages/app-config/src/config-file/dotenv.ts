@@ -60,8 +60,12 @@ export class Dotenv {
   }
 
   /** 編集中の内容を元ファイルに保存する。 */
-  rewriteOriginal(): void {
-    writeFileSync(this.src, this.document, "utf-8");
+  rewriteOriginal(dryRun: boolean = false): void {
+    if (dryRun) {
+      console.log(`[dry-run] would save .env.development:\n${this.document}`);
+    } else {
+      writeFileSync(this.src, this.document, "utf-8");
+    }
   }
 
   /** 現在の環境変数をデプロイ用の形式で保存する。 */

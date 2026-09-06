@@ -47,8 +47,14 @@ export class GlobalRuntimeEnvsYaml {
     }
   }
 
-  save(): void {
-    writeFileSync(this.file, this.document.toString(), "utf8");
+  save(dryRun = false): void {
+    if (dryRun) {
+      console.log(
+        `[dry-run] would save globalRuntimeEnvs.yaml:\n${this.document.toString()}`,
+      );
+    } else {
+      writeFileSync(this.file, this.document.toString(), "utf8");
+    }
   }
 }
 

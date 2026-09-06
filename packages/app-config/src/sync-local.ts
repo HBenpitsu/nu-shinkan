@@ -27,11 +27,11 @@ function syncPackageLocal(
   // 共有設定のnullは消費せず、存在するネイティブ設定にだけ反映する。
   if (dotenv.exists()) {
     dotenv.updateVariables(local);
-    if (!dryRun) dotenv.rewriteOriginal();
+    dotenv.rewriteOriginal(dryRun);
   }
   if (wranglerJsonc.exists()) {
     wranglerJsonc.update({ vars: local });
-    if (!dryRun) wranglerJsonc.rewriteOriginal();
+    wranglerJsonc.rewriteOriginal(dryRun);
   }
 }
 
