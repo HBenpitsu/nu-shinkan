@@ -1,8 +1,7 @@
 import { execFileSync } from "node:child_process";
-import type { Package } from "../workspace/workspace.js";
 
 /** The connection-graph tools exchange JSON through stdout/stdin. */
-export function reviewTargets(starts: Package[]): Package[] {
+export function reviewTargets(starts: string[]): string[] {
   const graph = execFileSync(
     "pnpm",
     ["exec", "tsx", "scripts/connection-graph/build.ts"],
@@ -18,7 +17,7 @@ export function reviewTargets(starts: Package[]): Package[] {
         "--graph",
         "-",
         "--",
-        ...starts.map((p) => p.package),
+        ...starts,
       ],
       { input: graph, encoding: "utf8", stdio: ["pipe", "pipe", "inherit"] },
     ),

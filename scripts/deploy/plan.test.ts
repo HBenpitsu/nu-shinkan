@@ -18,7 +18,7 @@ function deps() {
       !filters ? all : filters[0]?.startsWith("...") ? all : [api],
     ),
     resolveWorkers: vi.fn((packages: typeof all) => packages),
-    reviewTargets: vi.fn(() => all),
+    reviewTargets: vi.fn(() => all.map((p) => p.package)),
   };
 }
 it("separates direct changes from dependents", () =>

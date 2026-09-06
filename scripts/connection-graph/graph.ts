@@ -1,89 +1,113 @@
-import { resolve } from "node:path";
-import {
-  readDeploymentYaml,
-  type Deployment,
-} from "@repo/app-config/deployment";
-import {
-  listWorkspacePackages,
-  findWorkspaceRoot,
-} from "../workspace/workspace.js";
+import type { Deployment } from "@repo/app-config/deployment";
 
-export type Package = { package: string; path: string };
-/** Edges point from a connection destination to its callers. */
-export type ConnectionGraph = {
-  packages: Package[];
+export type ConnectionGraphJSON = {
+  packages: string[];
   edges: [string, string][];
   reviewEntries: string[];
 };
 
-// Main Logic
+/** 呼び出し元→接続先のグラフ。ファイルI/Oやworkspace探索は呼び出し側が担う。 */
+export class ConnectionGraph {
+  #data: ConnectionGraphJSON;
+  #destinations: Map<string, Set<string>>;
+  #callers: Map<string, Set<string>>;
 
-/** Read every workspace, including packages without deployment.yaml. */
-export function buildWorkspaceConnectionGraph(
-  root = findWorkspaceRoot(),
-): ConnectionGraph {
-  const packages = listWorkspacePackages(root);
-  return buildConnectionGraph(
-    packages,
-    new Map(
-      packages.map((p) => [
-        p.package,
-        readDeploymentYaml(resolve(root, p.path)),
-      ]),
-    ),
-  );
-}
+  // Main Logic
 
-export function buildConnectionGraph(
-  packages: Package[],
-  configs: ReadonlyMap<string, Deployment>,
-): ConnectionGraph {
-  const names = new Set(packages.map((p) => p.package));
-  if (names.size !== packages.length)
-    throw new Error("Duplicate workspace package name");
-  const edges: [string, string][] = [];
-  const reviewEntries: string[] = [];
-  for (const { package: source } of packages) {
-    const config = configs.get(source);
-    if (!config) continue;
-    if (config.reviewEntry) reviewEntries.push(source);
-    // URLとBindingが同じ接続先を指していても、探索用の辺は一つにする。
-    const destinations = new Set([
-      ...Object.values(config.connections.bindings),
-      ...Object.values(config.connections.urls),
-    ]);
-    // APIの変更から呼び出し元Webへ辿れるよう、実際の接続と逆向きにする。
-    for (const target of destinations)
-      if (target !== source && names.has(target)) edges.push([target, source]);
+  static fromDeployments(
+    packages: string[],
+    configs: ReadonlyMap<string, Deployment>,
+  ): ConnectionGraph {
+    const names = new Set(packages);
+    if (names.size !== packages.length)
+      throw new Error("Duplicate workspace package name");
+    const edges: [string, string][] = [];
+    const reviewEntries: string[] = [];
+    for (const source of packages) {
+      const config = configs.get(source);
+      if (!config) continue;
+      if (config.reviewEntry) reviewEntries.push(source);
+      // URLとBindingが同じ接続先を指していても、探索用の辺は一つにする。
+      const destinations = new Set([
+        ...Object.values(config.connections.bindings),
+        ...Object.values(config.connections.urls),
+      ]);
+      // 設定と同じ向きで保持する（WebがAPIに接続するならWeb→API）。
+      for (const target of destinations)
+        if (target !== source && names.has(target))
+          edges.push([source, target]);
+    }
+    return new ConnectionGraph({ packages, edges, reviewEntries });
   }
-  return { packages: packages.map((p) => ({ ...p })), edges, reviewEntries };
-}
 
-/**
- * Select review candidates, preserving workspace order. Starts must already
- * include package-dependency impact. Deploy-script filtering belongs to execution.
- */
-export function selectReviewTargets(
-  graph: ConnectionGraph,
-  sources: Iterable<string>,
-): Package[] {
-  const forward = new Map(
-    graph.packages.map((p) => [p.package, new Set<string>()]),
-  );
-  const reverse = new Map(
-    graph.packages.map((p) => [p.package, new Set<string>()]),
-  );
-  for (const [from, to] of graph.edges) {
-    if (from === to || !forward.has(from) || !forward.has(to)) continue;
-    forward.get(from)!.add(to);
-    reverse.get(to)!.add(from);
+  static fromJSON(value: unknown): ConnectionGraph {
+    if (!value || typeof value !== "object")
+      throw new Error("Invalid connection graph");
+    const graph = value as ConnectionGraphJSON;
+    if (
+      !Array.isArray(graph.packages) ||
+      !graph.packages.every(
+        (name) => typeof name === "string" && name.length > 0,
+      ) ||
+      !Array.isArray(graph.edges) ||
+      !graph.edges.every(
+        (edge) =>
+          Array.isArray(edge) &&
+          edge.length === 2 &&
+          edge.every((name) => typeof name === "string"),
+      ) ||
+      !Array.isArray(graph.reviewEntries) ||
+      !graph.reviewEntries.every((name) => typeof name === "string")
+    )
+      throw new Error("Invalid connection graph");
+    const names = new Set(graph.packages);
+    if (names.size !== graph.packages.length)
+      throw new Error("Duplicate workspace package name");
+    return new ConnectionGraph(graph);
   }
-  // 起点から辿れるだけでは入口のない枝も含む。入口へ戻れる集合との積で絞る。
-  const fromSources = collectReachable(forward, sources);
-  const toEntries = collectReachable(reverse, graph.reviewEntries);
-  return graph.packages.filter(
-    (p) => fromSources.has(p.package) && toEntries.has(p.package),
-  );
+
+  hasPackage(name: string): boolean {
+    return this.#destinations.has(name);
+  }
+
+  /** 起点は依存関係の影響先まで展開済みとする。結果はworkspace順で返す。 */
+  selectReviewTargets(sources: Iterable<string>): string[] {
+    // 起点から呼び出し元へ逆向きに辿り、入口から接続先へ辿れる集合との積を取る。
+    const fromSources = collectReachable(this.#callers, sources);
+    const toEntries = collectReachable(
+      this.#destinations,
+      this.#data.reviewEntries,
+    );
+    return this.#data.packages.filter(
+      (name) => fromSources.has(name) && toEntries.has(name),
+    );
+  }
+
+  toJSON(): ConnectionGraphJSON {
+    // 呼び出し側の変更が内部グラフへ波及しないようコピーを返す。
+    return structuredClone(this.#data);
+  }
+
+  // Helper
+
+  private constructor(data: ConnectionGraphJSON) {
+    this.#data = structuredClone(data);
+    // 隣接リストは生成時に一度だけ作り、繰り返しの選定で再利用する。
+    const destinations = new Map(
+      this.#data.packages.map((p) => [p, new Set<string>()]),
+    );
+    const callers = new Map(
+      this.#data.packages.map((p) => [p, new Set<string>()]),
+    );
+    for (const [from, to] of this.#data.edges) {
+      if (from === to || !destinations.has(from) || !destinations.has(to))
+        continue;
+      destinations.get(from)!.add(to);
+      callers.get(to)!.add(from);
+    }
+    this.#destinations = destinations;
+    this.#callers = callers;
+  }
 }
 
 // Helper

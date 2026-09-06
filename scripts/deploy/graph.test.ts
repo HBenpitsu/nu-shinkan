@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { reviewTargets } from "./graph.js";
 vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
 it("passes build JSON to select and returns its targets", () => {
-  const target = { package: "api", path: "apps/api" };
+  const target = "api";
   vi.mocked(execFileSync)
     .mockReturnValueOnce('{"graph":true}')
     .mockReturnValueOnce(JSON.stringify([target]));

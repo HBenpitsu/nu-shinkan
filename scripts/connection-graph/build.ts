@@ -1,13 +1,29 @@
 import { parseArgs } from "node:util";
-import { buildWorkspaceConnectionGraph } from "./graph.js";
+import { ConnectionGraph } from "./graph.js";
+import { resolve } from "node:path";
+import { readDeploymentYaml } from "@repo/app-config/deployment";
+import {
+  listWorkspacePackages,
+  findWorkspaceRoot,
+} from "../workspace/workspace.js";
 
 // Main Logic
 
 function main(): void {
   const { values } = parseArgs({ options: { root: { type: "string" } } });
-  console.log(
-    JSON.stringify(buildWorkspaceConnectionGraph(values.root), null, 2),
+  const root = values.root ?? findWorkspaceRoot();
+  const packages = listWorkspacePackages(root);
+  const deployments = new Map(
+    packages.map((pkg) => [
+      pkg.package,
+      readDeploymentYaml(resolve(root, pkg.path)),
+    ]),
   );
+  const graph = ConnectionGraph.fromDeployments(
+    packages.map((p) => p.package),
+    deployments,
+  );
+  console.log(JSON.stringify(graph, null, 2));
 }
 
 // EntryPoint

@@ -3,16 +3,33 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 import { asDeployment } from "@repo/app-config/deployment";
-import {
-  buildConnectionGraph,
-  buildWorkspaceConnectionGraph,
-} from "./graph.js";
-import { selectReviewTargets } from "./graph.js";
+import { ConnectionGraph } from "./graph.js";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+// workspace読み取りはクラスではなくbuild CLIの責務として検証する。
+function buildWorkspaceConnectionGraph(root: string): ConnectionGraph {
+  return ConnectionGraph.fromJSON(
+    JSON.parse(
+      execFileSync(
+        "pnpm",
+        [
+          "exec",
+          "tsx",
+          fileURLToPath(new URL("./build.ts", import.meta.url)),
+          "--root",
+          root,
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ),
+    ),
+  );
+}
 
 it("selects every entry path, including cycles, but not unrelated dependencies", () => {
   const names = ["api", "a", "b", "web", "other", "batch", "orphan"];
-  const graph = buildConnectionGraph(
-    names.map((packageName) => ({ package: packageName, path: packageName })),
+  const graph = ConnectionGraph.fromDeployments(
+    names,
     new Map([
       [
         "api",
@@ -36,24 +53,30 @@ it("selects every entry path, including cycles, but not unrelated dependencies",
     ]),
   );
   expect(
-    graph.edges.filter(([from, to]) => from === "a" && to === "web"),
+    graph.toJSON().edges.filter(([from, to]) => from === "web" && to === "a"),
   ).toHaveLength(1);
-  expect(graph.edges).not.toContainEqual(["api", "api"]);
-  expect(graph.edges).not.toContainEqual(["missing", "api"]);
-  expect(
-    selectReviewTargets(graph, ["api", "orphan", "api"]).map((p) => p.package),
-  ).toEqual(["api", "a", "b", "web"]);
-  expect(selectReviewTargets(graph, ["web"]).map((p) => p.package)).toEqual([
+  expect(graph.toJSON().edges).not.toContainEqual(["api", "api"]);
+  expect(graph.toJSON().edges).not.toContainEqual(["api", "missing"]);
+  expect(graph.selectReviewTargets(["api", "orphan", "api"])).toEqual([
+    "api",
+    "a",
+    "b",
     "web",
   ]);
-  expect(selectReviewTargets(graph, [])).toEqual([]);
-  expect(selectReviewTargets(graph, ["orphan", "unknown"])).toEqual([]);
-  expect(selectReviewTargets({ ...graph, reviewEntries: [] }, names)).toEqual(
-    [],
-  );
+  expect(graph.selectReviewTargets(["web"])).toEqual(["web"]);
+  expect(graph.selectReviewTargets([])).toEqual([]);
+  expect(graph.selectReviewTargets(["orphan", "unknown"])).toEqual([]);
   expect(
-    selectReviewTargets(JSON.parse(JSON.stringify(graph)), ["api"]),
-  ).toEqual(selectReviewTargets(graph, ["api"]));
+    ConnectionGraph.fromJSON({
+      ...graph.toJSON(),
+      reviewEntries: [],
+    }).selectReviewTargets(names),
+  ).toEqual([]);
+  expect(
+    ConnectionGraph.fromJSON(
+      JSON.parse(JSON.stringify(graph)),
+    ).selectReviewTargets(["api"]),
+  ).toEqual(graph.selectReviewTargets(["api"]));
 });
 
 it("reads workspace configuration, missing deployment files, and exclusions", () => {
@@ -75,15 +98,8 @@ it("reads workspace configuration, missing deployment files, and exclusions", ()
       "reviewEntry: true\nconnections:\n  urls:\n    API: api\n",
     );
     const graph = buildWorkspaceConnectionGraph(root);
-    expect(graph.packages.map((p) => p.package)).toEqual([
-      "api",
-      "shared",
-      "web",
-    ]);
-    expect(selectReviewTargets(graph, ["api"]).map((p) => p.package)).toEqual([
-      "api",
-      "web",
-    ]);
+    expect(graph.toJSON().packages).toEqual(["api", "shared", "web"]);
+    expect(graph.selectReviewTargets(["api"])).toEqual(["api", "web"]);
     writeFileSync(
       join(root, "apps/web/deployment.yaml"),
       "connections:\n  urls: []\n",
@@ -97,14 +113,28 @@ it("reads workspace configuration, missing deployment files, and exclusions", ()
 });
 
 it("handles long paths without recursive stack overflow", () => {
-  const packages = Array.from({ length: 20000 }, (_, i) => ({
-    package: String(i),
-    path: String(i),
-  }));
+  const packages = Array.from({ length: 20000 }, (_, i) => String(i));
   const edges: [string, string][] = packages
     .slice(1)
-    .map((p, i) => [String(i), p.package]);
+    .map((p, i) => [p, String(i)]);
   expect(
-    selectReviewTargets({ packages, edges, reviewEntries: ["19999"] }, ["0"]),
+    ConnectionGraph.fromJSON({
+      packages,
+      edges,
+      reviewEntries: ["19999"],
+    }).selectReviewTargets(["0"]),
   ).toHaveLength(20000);
+});
+
+it("isolates its graph from input, serialized output, and selected result mutations", () => {
+  const data = {
+    packages: ["api", "web"],
+    edges: [["web", "api"]],
+    reviewEntries: ["web"],
+  };
+  const graph = ConnectionGraph.fromJSON(data);
+  data.edges.length = 0;
+  graph.toJSON().packages.length = 0;
+  graph.selectReviewTargets(["api"])[0] = "changed";
+  expect(graph.selectReviewTargets(["api"])).toEqual(["api", "web"]);
 });

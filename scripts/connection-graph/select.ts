@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { selectReviewTargets, type ConnectionGraph } from "./graph.js";
+import { ConnectionGraph } from "./graph.js";
 
 // Main Logic
 
@@ -13,46 +13,13 @@ function main(): void {
     throw new Error(
       "Usage: tsx scripts/connection-graph/select.ts --graph <file|-> [package-name ...]",
     );
-  const graph = parseGraph(
+  const graph = ConnectionGraph.fromJSON(
     JSON.parse(readFileSync(values.graph === "-" ? 0 : values.graph, "utf8")),
   );
-  const names = new Set(graph.packages.map((p) => p.package));
-  const unknown = sources.filter((name) => !names.has(name));
+  const unknown = sources.filter((name) => !graph.hasPackage(name));
   if (unknown.length)
     throw new Error(`Unknown packages: ${unknown.join(", ")}`);
-  console.log(JSON.stringify(selectReviewTargets(graph, sources), null, 2));
-}
-
-// Helper
-
-function parseGraph(value: unknown): ConnectionGraph {
-  if (!value || typeof value !== "object")
-    throw new Error("Invalid connection graph");
-  const graph = value as ConnectionGraph;
-  if (
-    !Array.isArray(graph.packages) ||
-    !graph.packages.every(
-      (p) =>
-        p &&
-        typeof p.package === "string" &&
-        p.package.length > 0 &&
-        typeof p.path === "string",
-    ) ||
-    !Array.isArray(graph.edges) ||
-    !graph.edges.every(
-      (edge) =>
-        Array.isArray(edge) &&
-        edge.length === 2 &&
-        edge.every((name) => typeof name === "string"),
-    ) ||
-    !Array.isArray(graph.reviewEntries) ||
-    !graph.reviewEntries.every((name) => typeof name === "string")
-  )
-    throw new Error("Invalid connection graph");
-  const names = new Set(graph.packages.map((p) => p.package));
-  if (names.size !== graph.packages.length)
-    throw new Error("Duplicate workspace package name");
-  return graph;
+  console.log(JSON.stringify(graph.selectReviewTargets(sources), null, 2));
 }
 
 // EntryPoint

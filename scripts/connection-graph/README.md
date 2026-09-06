@@ -23,17 +23,14 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 `--root <directory>` で対象 workspace ルートを指定できる。省略時はカレントディレクトリから pnpm workspace ルートを探す。
 
-全パッケージの `deployment.yaml` を既存の app-config ローダーで読み、`connections.bindings` / `urls` を接続先 → 接続元の辺に変換する。自己ループ・不明な接続先は無視し、重複する辺をまとめる。設定省略・不正な `reviewEntry` の扱いもローダーに従う。
+全パッケージの `deployment.yaml` を既存の app-config ローダーで読み、`connections.bindings` / `urls` を接続元 → 接続先の辺に変換する。自己ループ・不明な接続先は無視し、重複する辺をまとめる。設定省略・不正な `reviewEntry` の扱いもローダーに従う。
 
 出力の形式は次のとおり。
 
 ```json
 {
-  "packages": [
-    { "package": "api", "path": "apps/api" },
-    { "package": "web", "path": "apps/web" }
-  ],
-  "edges": [["api", "web"]],
+  "packages": ["api", "web"],
+  "edges": [["web", "api"]],
   "reviewEntries": ["web"]
 }
 ```
@@ -42,8 +39,16 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 `--graph <file|->` は必須。残りの引数に起点のパッケージ名を渡す。起点が空なら空配列、不明な名前や不正なグラフ JSON はエラーになる。
 
-起点から到達できる集合と、review 入口に到達できる集合の積を返す。循環を含め反復探索し、入口自身の長さ 0 の経路も含める。出力は `{ package, path }[]` で入力グラフのパッケージ順を維持する。
+起点から呼び出し元へ逆向きに辿れる集合と、review入口から接続先へ正向きに辿れる集合の積を返す。循環を含め反復探索し、入口自身の長さ 0 の経路も含める。出力はパッケージ名の `string[]` で入力グラフのパッケージ順を維持する。
 
 起点には呼び出し側でパッケージ依存関係による影響先まで含める。差分検出・manual-pick の受付・`scripts.deploy` による実行対象の絞り込みは呼び出し側の責務とする。
 
-`.github/scripts/deploy/graph.ts` も両 CLI を実行して JSON を受け渡す。`graph.ts` はツール内部の実装であり、外部向けの import API ではない。
+`scripts/deploy/graph.ts` も両 CLI を実行して JSON を受け渡す。`graph.ts` はツール内部の実装であり、外部向けの import API ではない。
+
+## 内部構成
+
+`ConnectionGraph` はグラフデータと探索を保持する。`fromDeployments(packages, deployments)` で構築し、`fromJSON(value)` で検証・復元する。`selectReviewTargets(sources)` がreview対象を返し、`toJSON()` は `{ packages, edges, reviewEntries }` を返す。
+
+接続先（destinations）・呼び出し元（callers）の隣接リストは構築時に一度だけ生成する。入力・返却データをコピーし、外部からの変更で探索結果が変わらないようにする。workspace列挙とdeploymentファイルの読み取りは `build.ts`、入力JSONの読み取りと引数検証は `select.ts` が担当する。
+
+グラフはパッケージ名だけをノードとして保持し、pathやWorker名は持たない。計画側が選定された名前をworkspaceのパッケージ情報に対応づけ、Worker名を付与して最終的なtargetsを作る。

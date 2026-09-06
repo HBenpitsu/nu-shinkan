@@ -49,7 +49,14 @@ export function plan(
       };
     }
   }
-  const targets = channel === "preview" ? deps.reviewTargets(starts) : starts;
+  const targets =
+    channel === "preview"
+      ? deps.reviewTargets(starts.map((p) => p.package)).map((name) => {
+          const pkg = all.find((p) => p.package === name);
+          if (!pkg) throw new Error(`Unknown graph target: ${name}`);
+          return pkg;
+        })
+      : starts;
   return {
     changes: changes.map((p) => p.package),
     targets: deps.resolveWorkers(targets),

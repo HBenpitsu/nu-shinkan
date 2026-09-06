@@ -34,9 +34,7 @@ it("builds JSON and selects from both a file and stdin", () => {
     for (const source of [file, "-"]) {
       const select = run("select", ["--graph", source, "api"], build.stdout);
       expect(select.status, select.stderr).toBe(0);
-      expect(
-        JSON.parse(select.stdout).map((p: { package: string }) => p.package),
-      ).toEqual(["api", "web"]);
+      expect(JSON.parse(select.stdout)).toEqual(["api", "web"]);
     }
     expect(JSON.parse(run("select", ["--graph", file]).stdout)).toEqual([]);
     const unknown = run("select", ["--graph", file, "missing"]);
