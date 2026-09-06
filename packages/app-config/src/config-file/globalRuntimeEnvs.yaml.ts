@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import YAML from "yaml";
 import {
   asRecord,
@@ -6,15 +6,13 @@ import {
   asNullableVariables,
   type Variables,
 } from "./parse.js";
+
 export type GlobalRuntimeEnvs = {
   local: Record<string, string | null>;
   staging: Variables;
   release: Variables;
 };
-export const globalFile = new URL(
-  "../../globalRuntimeEnvs.yaml",
-  import.meta.url,
-);
+const globalFile = new URL("../../globalRuntimeEnvs.yaml", import.meta.url);
 
 // Main Logic
 
@@ -24,7 +22,7 @@ export function readGlobalRuntimeEnvs(): GlobalRuntimeEnvs {
   );
 }
 
-export function asGlobalRuntimeEnvs(value: unknown): GlobalRuntimeEnvs {
+function asGlobalRuntimeEnvs(value: unknown): GlobalRuntimeEnvs {
   const raw = asRecord(value, "globalRuntimeEnvs");
   return {
     // localのnullは削除指示なので、文字列化せず同期処理へ渡す。
@@ -33,3 +31,23 @@ export function asGlobalRuntimeEnvs(value: unknown): GlobalRuntimeEnvs {
     release: asVariables(raw.release, "release"),
   };
 }
+
+export function removeNullFromGlobalRuntimeEnvsYaml(dryRun = false): void {
+  const document = YAML.parseDocument(readFileSync(globalFile, "utf8"));
+
+  const localProfileEnvs = asGlobalRuntimeEnvs(document.toJS()).local;
+
+  for (const [key, value] of Object.entries(localProfileEnvs)) {
+    if (value === null) {
+      document.deleteIn(["local", key]);
+    }
+  }
+
+  if (!dryRun) {
+    writeFileSync(globalFile, document.toString());
+  }
+}
+
+export const testExports = {
+  asGlobalRuntimeEnvs,
+};

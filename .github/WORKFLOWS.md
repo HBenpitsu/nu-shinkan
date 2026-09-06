@@ -1,55 +1,34 @@
-## このドキュメントの目的
+# GitHub Actions の構成
 
-このドキュメントは，現状のgithub workflowsの構成を説明することを目的とした打球メントです．
+開発中の CI/CD 構成。配置・責務の方針は [deploy workflow の整理方針](../docs/discussion/deploy-workflow-organization.md) を参照する。
 
-## Workflowの種別
+## トリガーと処理
 
-存在するworkflowは以下に大別できます．
+| Workflow | 処理 |
+| --- | --- |
+| `on-tag-change.yml` | 手動実行・初回タグは `full-deploy`、既存 staging/release タグの更新は `update-deploy` |
+| `on-pr.yml` | 通常 PR は `review-deploy`、コメント受付からの内部 dispatch は `pick-deploy` |
+| `on-pr-comment.yml` | `/preview` を解析し、権限を確認して PR の SHA と指定名を固定し内部 dispatch |
+| `on-pr-close.yml` | PR 状態を確認し、`preview-prune` で削除 |
 
-- utility workflow
-- trigger workflow
-- CI/CD workflow(actions)
-- 共通化処理
+full/update は channel 単位、review/pick/cleanup は PR 単位で排他を共有する。checkout は受付時に確定した SHA を使う。preview は実行開始時と deploy 直前に PR 状態を再確認する。
 
-### utility workflow
+## Deploy actions
 
-utility workflowはgithub上の操作を簡便にすることを目的としたworkflowです．
+- `full-deploy`：channel のみを受け取り、設定準備後に全件 test → build → deploy。対象選定ステップは持たない。
+- `update-deploy`：差分と依存関係で対象を選び、比較不能時は全件にフォールバックする。
+- `review-deploy`：PR 差分の影響先と connection graph から対象を選ぶ。
+- `pick-deploy`：ルート依存の準備後に Turbo の一覧と指定名を照合し、影響先と connection graph から対象を選ぶ。
 
-| workflow file | 用途 | トリガー |
-| merge-ff.yml | PRをfead forward only mergeでcloseする | PRにスラッシュコマンドを入力 |
-| retag-by-commit-sha.yml | release/stagingタグを特定のコミットに付け替える | Actionsタブから実行 |
-| retag-staging-to-branch.yml | stagingタグを特定のブランチのヘッドに付け替える | Actionsタブから実行 |
-| retag-release-to-staging.yml | releaseタグをstagingタグと同じコミットに付け替える | Actionsタブから実行 |
+対象選定は各 action の `plan.mjs`、Worker 情報との対応付けは `scripts/deploy/targets.ts`、実行と結果集計は `scripts/deploy/run.ts`・`results.ts` が担当する。統合 CLI は使用しない。
 
-### trigger workflow
+## 補助処理
 
-trigger workflowは，git上の操作やスケジュールに応じて自動でトリガーされるworkflowで，CI/CDへ接続します．
+- `use-repo`：Node/pnpm と依存の準備。
+- `refine-filter`：タスクを持つパッケージを調べ、実行引数と依存インストール引数を出力。`vi-test`・`ui-test` が利用する。
+- `preview-prune`：各パッケージの `preview:prune` を Turbo で実行。PR 番号は必須。削除処理は自身の PR Worker を force で削除し、API の Worker 不存在を成功扱いにする。
+- `deploy-notify/notify.mjs`：結果を `GITHUB_STEP_SUMMARY` と PR コメントへ出力。通知失敗はログへ記録する。
 
-| workflow file | 接続するCI/CDアクション | 
-| nightly.yml | なし |
-| on-tag-change.yml | release/stagingデプロイ |
-| on-pr.yml | previewデプロイ |
-| on-pr-comment.yml | previewデプロイ(fallback) |
-| on-pr-close.yml | previewデプロイのクリーンアップ |
+通常ログは Actions ログで確認する。再通知 workflow と deploy ログの artifact 保存は廃止した。HTML の UI テストレポートは artifact に保存する。
 
-### CI/CD workflow(action)
-
-CI/CDアクションのオーケストレーションを行うworkflowもしくはactionです
-
-| workflow file | 処理 |
-| (actions) update-deploy | ビルド，デプロイ |
-| (actions) full-deploy | ビルド，デプロイ |
-| (actions) review-deploy | ビルド，デプロイ |
-| (actions) pick-deploy | ビルド，デプロイ |
-| (actions) ui-test | テスト (ui) |
-| (actions) vi-test | テスト (vitest) |
-
-
-### 共通化処理
-
-pnpmのセットアップなど，複数のworkflowに共通する処理はreusable workflowもしくはcomposit actionとして抽出サれています．
-
-| workflow file | 処理 |
-| (actions) comment-reaction | トリガーとなったコメントにリアクションをつける |
-| (actions) use-app | Github App のクレデンシャルでリポジトリをCheckoutする |
-| (actions) use-repo | リポジトリの依存関係を解決する |
+既存の retag・merge 用 utility workflow は維持する。実環境での dispatch、排他、Cloudflare deploy/cleanup はローカル検証とは別に確認する。

@@ -35,33 +35,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - id: early
-        run: node .github/scripts/deploy/early.mjs
+      - id: state
+        run: node .github/scripts/pr-state.mjs
       - name: Cleanup
-        if: ${{ steps.early.outputs.operation == 'cleanup' }}
-        run: node .github/scripts/deploy/cleanup-run.mjs
-      - name: Notify
-        if: ${{ always() && steps.early.outcome == 'success' }}
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: node .github/scripts/deploy/notify-run.mjs
-      - name: Report failure before the early input step
-        if: ${{ always() && steps.early.outcome == 'skipped' }}
-        uses: actions/github-script@v7
-        env:
-          FAILED_PHASE: ${{ steps.checkout.outcome == 'failure' && 'checkout' || 'setup' }}
+        if: ${{ steps.state.outputs.operation == 'cleanup' }}
+        uses: ./.github/actions/preview-prune
         with:
-          script: |
-            const fs = require('node:fs');
-            const report = { repository: `${context.repo.owner}/${context.repo.repo}`, runId: String(context.runId), pr: Number(process.env.PR_NUMBER), head: process.env.HEAD_SHA || '', channel: 'preview', phase: process.env.FAILED_PHASE, error: 'Workflow failed before input validation; see Actions logs', changes: [], targets: [], results: [] };
-            try {
-              if (!Number.isSafeInteger(report.pr) || report.pr <= 0) throw Error('Invalid PR number');
-              await github.rest.issues.createComment({...context.repo, issue_number: report.pr, body: `Preview failed at ${report.phase}. SHA: ${report.head}\n\nhttps://github.com/${report.repository}/actions/runs/${report.runId}`});
-            } catch (error) { report.notificationError = String(error); core.setFailed(String(error)); }
-            fs.mkdirSync('.artifacts/deploy', {recursive: true});
-            fs.writeFileSync('.artifacts/deploy/result.json', JSON.stringify(report, null, 2));
-      - uses: actions/upload-artifact@v4
+          pr_number: ${{ env.PR_NUMBER }}
+      - name: Summarize and notify
         if: ${{ always() }}
-        with:
-          name: deploy-result
-          path: .artifacts/deploy/
+        env:
+          DEPLOY_CHANNEL: preview
+          JOB_STATUS: ${{ job.status }}
+          STEPS: ${{ toJSON(steps) }}
+        run: node .github/actions/deploy-notify/notify.mjs

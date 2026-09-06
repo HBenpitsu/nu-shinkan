@@ -1,12 +1,5 @@
-import {
-  existsSync,
-  readFileSync,
-  readdirSync,
-  mkdirSync,
-  writeFileSync,
-  copyFileSync,
-  rmSync,
-} from "node:fs";
+import { parseContext } from "@repo/app-config/context";
+import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { resultFor, type Summary } from "./results.js";
@@ -42,14 +35,13 @@ export function runTask(
     );
 }
 export function runDeploy(targets: Package[], manual: boolean) {
-  mkdirSync(".artifacts/deploy", { recursive: true });
+  parseContext({ ...process.env, TARGETS: JSON.stringify(targets) });
   const deployable = targets.filter(
     (p) =>
       typeof JSON.parse(readFileSync(join(p.path, "package.json"), "utf8"))
         .scripts?.deploy === "string",
   );
-  if (manual && !deployable.length)
-    throw new Error("No deployable targets for /preview");
+  if (manual && !deployable.length) throw new Error("No deployable targets");
   const before = new Set(
     existsSync(".turbo/runs") ? readdirSync(".turbo/runs") : [],
   );
@@ -75,7 +67,6 @@ export function runDeploy(targets: Package[], manual: boolean) {
     : undefined;
   const output = `${execution?.stdout ?? ""}${execution?.stderr ?? ""}`;
   process.stderr.write(output);
-  writeFileSync(".artifacts/deploy/turbo.log", output);
   const summaries = existsSync(".turbo/runs")
     ? readdirSync(".turbo/runs").filter(
         (f) => !before.has(f) && f.endsWith(".json"),
@@ -85,15 +76,13 @@ export function runDeploy(targets: Package[], manual: boolean) {
   if (summaries.length === 1) {
     const file = join(".turbo/runs", summaries[0]!);
     summary = JSON.parse(readFileSync(file, "utf8"));
-    copyFileSync(file, ".artifacts/deploy/turbo-summary.json");
   }
-  const results = targets.map((pkg, index) => {
+  const results = targets.map((pkg) => {
     const logFile = join(pkg.path, ".turbo/turbo-deploy.log");
     const log =
       deployable.includes(pkg) && existsSync(logFile)
         ? readFileSync(logFile, "utf8")
         : "";
-    writeFileSync(`.artifacts/deploy/${index}.log`, log);
     const configFile = join(pkg.path, "wrangler.deploy.jsonc");
     return resultFor(
       pkg,

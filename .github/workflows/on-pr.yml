@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: preview
     outputs:
-      changes: ${{ steps.deploy.outputs.changes }}
+      changes: ${{ steps.review.outputs.changes || steps.pick.outputs.changes }}
     env:
       GITHUB_TOKEN: ${{ github.token }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
@@ -55,67 +55,72 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - id: early
-        name: Check current PR state and manual input before install
-        run: node .github/scripts/deploy/early.mjs
-      - id: deploy
-        if: ${{ steps.early.outputs.operation == 'deploy' }}
-        uses: ./.github/actions/deploy
+      - id: state
+        name: Check current PR state
+        run: node .github/scripts/pr-state.mjs
+      - id: review
+        if: ${{ steps.state.outputs.operation == 'deploy' && github.event_name == 'pull_request' }}
+        uses: ./.github/actions/review-deploy
         with:
-          channel: preview
           head_sha: ${{ env.HEAD_SHA }}
           base_sha: ${{ env.BASE_SHA }}
-          selection_source: ${{ env.SELECTION_SOURCE }}
+          pr_number: ${{ env.PR_NUMBER }}
+      - id: pick
+        if: ${{ steps.state.outputs.operation == 'deploy' && github.event_name == 'workflow_dispatch' }}
+        uses: ./.github/actions/pick-deploy
+        with:
+          head_sha: ${{ env.HEAD_SHA }}
+          base_sha: ${{ env.BASE_SHA }}
           pr_number: ${{ env.PR_NUMBER }}
           picks: ${{ env.PICKS }}
       - name: Clean closed PR
-        if: ${{ steps.early.outputs.operation == 'cleanup' }}
-        run: node .github/scripts/deploy/cleanup-run.mjs
-      - name: Notify
-        if: ${{ always() && steps.early.outcome == 'success' }}
+        if: ${{ steps.state.outputs.operation == 'cleanup' }}
+        uses: ./.github/actions/preview-prune
+        with:
+          pr_number: ${{ env.PR_NUMBER }}
+      - name: Summarize and notify
+        if: ${{ always() }}
         env:
           JOB_STATUS: ${{ job.status }}
-        run: node .github/scripts/deploy/notify-run.mjs
-      - name: Report failure before the early input step
-        if: ${{ always() && steps.early.outcome == 'skipped' }}
-        uses: actions/github-script@v7
+          STEPS: ${{ toJSON(steps) }}
+          RESULTS: ${{ steps.review.outputs.results || steps.pick.outputs.results || '[]' }}
+        run: node .github/actions/deploy-notify/notify.mjs
+  checks:
+    needs: preview
+    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+      - uses: ./.github/actions/use-repo
+      - name: Lint changed packages
         env:
-          FAILED_PHASE: ${{ steps.checkout.outcome == 'failure' && 'checkout' || 'setup' }}
-        with:
-          script: |
-            const fs = require('node:fs');
-            const report = { repository: `${context.repo.owner}/${context.repo.repo}`, runId: String(context.runId), pr: Number(process.env.PR_NUMBER), head: process.env.HEAD_SHA || '', channel: 'preview', phase: process.env.FAILED_PHASE, error: 'Workflow failed before input validation; see Actions logs', changes: [], targets: [], results: [] };
-            try {
-              if (!Number.isSafeInteger(report.pr) || report.pr <= 0) throw Error('Invalid PR number');
-              await github.rest.issues.createComment({...context.repo, issue_number: report.pr, body: `Preview failed at ${report.phase}. SHA: ${report.head}\n\nhttps://github.com/${report.repository}/actions/runs/${report.runId}`});
-            } catch (error) { report.notificationError = String(error); core.setFailed(String(error)); }
-            fs.mkdirSync('.artifacts/deploy', {recursive: true});
-            fs.writeFileSync('.artifacts/deploy/result.json', JSON.stringify(report, null, 2));
-      - uses: actions/upload-artifact@v4
+          PACKAGES: ${{ needs.preview.outputs.changes }}
+        run: node .github/scripts/task.mjs lint
+      - name: Check deployment tooling
         if: ${{ always() }}
+        run: |
+          pnpm --filter @repo/scripts exec vitest run
+          node --test .github/scripts/*.test.mjs
+  ui-tests:
+    needs: preview
+    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
         with:
-          name: deploy-result
-          path: .artifacts/deploy/
-  light-tests:
-    needs: preview
-    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
-    uses: ./.github/workflows/light-tests.yml
-    with:
-      affected: true
-      packages: ${{ needs.preview.outputs.changes }}
-      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
-  heavy-tests:
-    needs: preview
-    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
-    uses: ./.github/workflows/heavy-tests.yml
-    with:
-      affected: true
-      packages: ${{ needs.preview.outputs.changes }}
-      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
-  ui_test-report:
-    needs: heavy-tests
-    if: ${{ always() && needs.heavy-tests.result != 'skipped' }}
-    uses: ./.github/workflows/ui_test-report.yml
-    with:
-      pr_number: ${{ format('{0}', github.event.pull_request.number || inputs.pr_number) }}
-      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+      - name: Convert packages to filters
+        id: filters
+        env:
+          PACKAGES: ${{ needs.preview.outputs.changes }}
+        run: |
+          node --input-type=module <<'JS'
+          import {appendFileSync} from 'node:fs';
+          appendFileSync(process.env.GITHUB_OUTPUT, `filter<<PACKAGES_END\n${JSON.parse(process.env.PACKAGES).join('\n')}\nPACKAGES_END\n`);
+          JS
+      - uses: ./.github/actions/ui-test
+        with:
+          filter: ${{ steps.filters.outputs.filter }}
+          pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}

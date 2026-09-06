@@ -34,11 +34,10 @@ runs:
 
     - name: Prepare Filter
       id: filter
-      shell: bash
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        FILTER: ${{ inputs.filter }}
-      run: node "$ACTION_PATH/prepare-filter.mjs"
+      uses: ./.github/actions/refine-filter
+      with:
+        task: ui_test
+        filter: ${{ inputs.filter }}
 
     - name: Run UI Test
       id: tests
@@ -46,8 +45,8 @@ runs:
       shell: bash
       env:
         HUSKY: 0
-        TEST_ARGS: ${{ steps.filter.outputs.test_args }}
-        INSTALL_ARGS: ${{ steps.filter.outputs.install_args }}
+        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
+        INSTALL_ARGS: ${{ steps.filter.outputs.deps_args }}
       run: |
         mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.INSTALL_ARGS).forEach(arg => console.log(arg))')

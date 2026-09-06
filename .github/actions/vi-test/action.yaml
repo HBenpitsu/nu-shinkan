@@ -1,0 +1,59 @@
+name: Run Unit Test (vitest)
+description: Run unit tests for the project.
+
+inputs:
+  context:
+    description: Test context. Test results that share the same context will be cached.
+    required: false
+  filter:
+    description: A single Turbo filter expression for tests
+    required: false
+  pr_number:
+    description: |
+      PR or issue number. Defaults to the PR or issue from the triggering event. 
+      Commenting requires pull-requests write (PR) or issues write (issue) permission.
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup
+      uses: ./.github/actions/use-repo
+      with:
+        context: ${{ inputs.context }}
+        # Bootstrap Turbo before discovering test packages.
+        filter: .
+
+    - name: Prepare Filter
+      id: filter
+      uses: ./.github/actions/refine-filter
+      with:
+        task: test
+        filter: ${{ inputs.filter }}
+
+    - name: Run Vitest tests
+      id: tests
+      if: ${{ steps.filter.outputs.has_tests == 'true' }}
+      shell: bash
+      env:
+        HUSKY: 0
+        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
+        INSTALL_ARGS: ${{ steps.filter.outputs.deps_args }}
+      run: |
+        mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
+        mapfile -t install_args < <(node -e 'JSON.parse(process.env.INSTALL_ARGS).forEach(arg => console.log(arg))')
+
+        pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
+        pnpm test "${test_args[@]}" -- --run
+
+    - name: Comment on test failure
+      if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
+      uses: actions/github-script@v7
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+      with:
+        script: |
+          const path = require('node:path');
+          const commentTestFailure = require(path.join(process.env.ACTION_PATH, 'comment-test-failure.cjs'));
+          await commentTestFailure({ github, context });

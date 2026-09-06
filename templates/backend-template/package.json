@@ -9,13 +9,15 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "build": "app-build",
-    "sync:local": "sync-local"
+    "sync:local": "sync-local",
+    "undeploy:preview": "delete-preview-worker"
   },
   "dependencies": {
     "hono": "^4.13.5"
   },
   "devDependencies": {
     "@repo/app-config": "workspace:*",
+    "@repo/package-script": "workspace:*",
     "@cloudflare/workers-types": "^5.20260902.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.0",

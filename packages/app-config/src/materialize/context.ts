@@ -41,9 +41,7 @@ function parsePrNumber(
 }
 
 function parseTargets(value: string | undefined): ReadonlyMap<string, Target> {
-  if (!value)
-    throw new Error("TARGETS is required as JSON [{package,path,workerName?}]");
-  const targets: unknown = JSON.parse(value);
+  const targets: unknown = JSON.parse(value ?? "[]");
   if (
     !Array.isArray(targets) ||
     targets.some(

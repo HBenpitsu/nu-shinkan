@@ -1,4 +1,5 @@
 {
+  "name": "@repo/scripts",
   "type": "module",
   "scripts": {
     "test": "vitest"
@@ -13,6 +14,5 @@
     "yaml": "^2.9.0",
     "@repo/app-config": "workspace:*",
     "jsonc-parser": "^3.3.1"
-  },
-  "name": "@repo/scripts"
+  }
 }

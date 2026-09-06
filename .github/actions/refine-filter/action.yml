@@ -1,0 +1,29 @@
+name: Refine Turbo Filter
+description: Refines Turbo filters to match a specific task and outputs the arguments for direct and dependency tasks.
+inputs:
+  task:
+    description: turbo task
+    required: true
+  filter:
+    description: Newline separated Turbo filters
+    default: ""
+outputs:
+  direct_args:
+    description: Original arguments as JSON
+    value: ${{ steps.filter.outputs.direct_args }}
+  deps_args:
+    description: Dependency arguments as JSON
+    value: ${{ steps.filter.outputs.deps_args }}
+  has_tests:
+    description: Whether matching tasks exist
+    value: ${{ steps.filter.outputs.has_tests }}
+runs:
+  using: composite
+  steps:
+    - id: filter
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        TASK: ${{ inputs.task }}
+        FILTER: ${{ inputs.filter }}
+      run: node "$ACTION_PATH/refine-filter.mjs"

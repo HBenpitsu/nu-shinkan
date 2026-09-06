@@ -59,14 +59,24 @@ jobs:
         with:
           ref: ${{ needs.receive.outputs.head }}
           fetch-depth: ${{ needs.receive.outputs.source == 'diff' && '0' || '1' }}
-      - uses: ./.github/actions/deploy
+      - id: full
+        if: ${{ needs.receive.outputs.source == 'full' }}
+        uses: ./.github/actions/full-deploy
+        with:
+          channel: ${{ needs.receive.outputs.channel }}
+      - id: update
+        if: ${{ needs.receive.outputs.source == 'diff' }}
+        uses: ./.github/actions/update-deploy
         with:
           channel: ${{ needs.receive.outputs.channel }}
           head_sha: ${{ needs.receive.outputs.head }}
           base_sha: ${{ needs.receive.outputs.base }}
-          selection_source: ${{ needs.receive.outputs.source }}
-      - uses: actions/upload-artifact@v4
+      - name: Summarize
         if: ${{ always() }}
-        with:
-          name: deploy-result
-          path: .artifacts/deploy/
+        env:
+          DEPLOY_CHANNEL: ${{ needs.receive.outputs.channel }}
+          HEAD_SHA: ${{ needs.receive.outputs.head }}
+          JOB_STATUS: ${{ job.status }}
+          STEPS: ${{ toJSON(steps) }}
+          RESULTS: ${{ steps.full.outputs.results || steps.update.outputs.results || '[]' }}
+        run: node .github/actions/deploy-notify/notify.mjs

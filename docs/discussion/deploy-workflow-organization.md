@@ -143,3 +143,11 @@ Turbo は呼び出し元から直接利用し、単に Turbo を起動して出�
 5. 単体・結合検証後、検証用 preview、staging、release の順に実運用を確認する。
 
 実環境では固定 SHA、排他、PR close との競合、preview 接続、途中失敗後の cleanup、失敗時の Summary・PR 通知、通知失敗時のログを確認し、run URL と結果を記録する。
+
+## コード移行の記録
+
+4つの deploy action をトリガーへ接続し、統合 CLI、旧 `scripts/workspace/query.ts`、`.github/scripts/deploy`、deprecated action、再通知 workflow を撤去した。full は channel だけを受け取り、全件 test/build を Turbo で直接実行する。preview 用入力・差分入力・plan ステップを持たない。
+
+フィルタ共通 action は実装中の整理により `refine-filter` とし、`direct_args`・`deps_args` を返す。各 Worker パッケージとテンプレートには `preview:prune` を登録した。API に対する削除処理は `scripts/deploy/prune.ts` を共有し、force と既に不存在の場合の正常化を行う。
+
+現行の接続は [.github/WORKFLOWS.md](../../.github/WORKFLOWS.md) に記載する。ローカルの単体・選定経路・YAML と action 入力参照の検査を実施した。実際の Cloudflare deploy/削除と GitHub 上の実行は行っていない。

@@ -14,7 +14,8 @@
     "resolve-deps": "playwright install --with-deps",
     "ui_test:report": "playwright show-report --host 0.0.0.0",
     "build": "app-build",
-    "sync:local": "sync-local"
+    "sync:local": "sync-local",
+    "undeploy:preview": "delete-preview-worker"
   },
   "dependencies": {
     "@repo/dummy-preview-api": "workspace:*",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@repo/app-config": "workspace:*",
+    "@repo/package-script": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@tanstack/router-plugin": "^1.168.35",
