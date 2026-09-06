@@ -6,7 +6,7 @@ inputs:
     description: Cache key for the Turbo cache. Defaults to the commit hash of the triggering event.
     required: false
   filter:
-    description: A single Turbo filter expression for install
+    description: Turbo filter expressions for install
     required: false
 
 runs:

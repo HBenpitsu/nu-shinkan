@@ -3,34 +3,24 @@ description: Select, test, build and deploy the update flow in a fixed checkout.
 inputs:
   channel:
     description: Deployment channel
+    required: true
     default: "staging"
+    choices:
+      - staging
+      - release
   head_sha:
     description: Fixed target SHA
     required: true
   base_sha:
     description: Comparison SHA
     default: ""
-  pr_number:
-    description: Preview PR number
-    default: "-1"
-  picks:
-    description: Exact package names as JSON
-    default: "[]"
-outputs:
-  changes:
-    description: Test packages
-    value: ${{ steps.plan.outputs.changes }}
-  results:
-    description: Deployment results
-    value: ${{ steps.deploy.outputs.results }}
 runs:
   using: composite
   steps:
-    - name: Install dependencies
-      uses: ./.github/actions/use-repo
-    - name: Compile configuration tools
-      shell: bash
-      run: pnpm --filter @repo/app-config build
+    - uses: ./.github/actions/use-repo
+      with:
+        context: ${{ inputs.channel }}
+        filter: .
     - name: Select packages
       id: plan
       shell: bash
