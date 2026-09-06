@@ -33,3 +33,7 @@ dist-ssr
 /playwright/.auth/
 
 .env.production
+
+# Deployment artifacts
+wrangler.deploy.jsonc
+.env.deploy

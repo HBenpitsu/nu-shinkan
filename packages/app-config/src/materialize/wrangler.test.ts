@@ -1,25 +1,27 @@
-import { describe, expect, it } from "vitest";
-import { materializeWrangler } from "./wrangler.js";
-import { parseDeployment } from "../config-file/deployment.yaml.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { generateWranglerJsonc } from "./wrangler.js";
+import {
+  wranglerJsonc,
+  type WranglerConfig,
+} from "../config-file/wrangler.jsonc.js";
+import { asDeployment } from "../config-file/deployment.yaml.js";
 import type { Settings } from "./settings.js";
-import type { Context } from "./context.js";
+import { parseContext } from "./context.js";
 const settings: Settings = {
-  deployment: parseDeployment({
+  deployment: asDeployment({
     connections: { bindings: { API: "@repo/api", OTHER: "@repo/other" } },
   }),
   overrides: { ENV: "deployment" },
-  workers: new Map([
-    ["@repo/api", "api"],
-    ["@repo/other", "other"],
-  ]),
 };
-const context: Context = {
-  channel: "preview",
-  prNumber: 42,
-  targets: [{ package: "@repo/api", path: "apps/api" }],
-};
+const context = parseContext({
+  WORKER_NAMES: JSON.stringify({ "@repo/api": "api" }),
+  DEPLOY_CHANNEL: "preview",
+  PR_NUMBER: "42",
+  TARGETS: JSON.stringify([{ package: "@repo/api", path: "apps/api" }]),
+});
+
 describe("Wrangler materialize", () => {
-  it("rebases artifacts and only redirects selected connections", () => {
+  it("preserves artifact paths and only redirects selected connections", () => {
     const result = materializeWrangler(
       {
         name: "web",
@@ -42,8 +44,8 @@ describe("Wrangler materialize", () => {
     );
     expect(result).toMatchObject({
       name: "web-preview-pr-42",
-      main: "../src/worker.ts",
-      assets: { directory: "../dist" },
+      main: "src/worker.ts",
+      assets: { directory: "./dist" },
       vars: { ENV: "deployment" },
       services: [
         { binding: "API", service: "api-preview-pr-42" },
@@ -64,7 +66,15 @@ describe("Wrangler materialize", () => {
         ],
       },
       settings,
-      { ...context, channel: "release" },
+      parseContext({
+        DEPLOY_CHANNEL: "release",
+        TARGETS: JSON.stringify(
+          [...context.targets].map(([packageName, target]) => ({
+            package: packageName,
+            path: target.path,
+          })),
+        ),
+      }),
     );
     expect(result.name).toBe("web-release");
     expect(result.routes).toEqual(["example.org"]);
@@ -83,13 +93,31 @@ it("preserves native staging connections outside targets even if their declarati
       services: [{ binding: "EXTERNAL", service: "shared-native" }],
     },
     {
-      deployment: parseDeployment({
+      deployment: asDeployment({
         connections: { bindings: { EXTERNAL: "unknown-package" } },
       }),
       overrides: {},
-      workers: new Map(),
     },
     context,
   );
   expect(result.services?.[0]?.service).toBe("shared-native-staging");
 });
+
+afterEach(() => vi.restoreAllMocks());
+
+// ファイルI/Oだけを置き換え、公開入口を通して生成結果を検証する。
+function materializeWrangler(
+  original: WranglerConfig,
+  settings: Parameters<typeof generateWranglerJsonc>[0],
+  context: Parameters<typeof generateWranglerJsonc>[1],
+): WranglerConfig {
+  vi.spyOn(wranglerJsonc, "exists").mockReturnValue(true);
+  vi.spyOn(wranglerJsonc, "read").mockReturnValue(original);
+  const generate = vi
+    .spyOn(wranglerJsonc, "generate")
+    .mockImplementation(() => {});
+  generate.mockClear();
+  generateWranglerJsonc(settings, context);
+  expect(generate).toHaveBeenCalledTimes(1);
+  return generate.mock.calls[0]![0];
+}

@@ -11,8 +11,8 @@
     "compile": "eslint . --fix && vitest src/ --run && tsc -b"
   },
   "bin": {
-    "materialize": "./bin/materialize.js",
-    "app-build": "./bin/build.js"
+    "app-build": "./bin/build.js",
+    "sync-local": "./bin/sync-local.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,7 +27,6 @@
   "exports": {
     "./deployment": "./bin/config-file/deployment.yaml.js",
     "./context": "./bin/materialize/context.js",
-    "./sync-local": "./bin/sync-local.js",
     "./global": "./bin/config-file/globalRuntimeEnvs.yaml.js"
   }
 }

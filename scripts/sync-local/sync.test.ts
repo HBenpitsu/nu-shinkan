@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import {
   mkdtempSync,
   mkdirSync,
@@ -6,9 +6,19 @@ import {
   readFileSync,
   rmSync,
 } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse } from "jsonc-parser";
+import { execFileSync } from "node:child_process";
+const { execFileSync: executeCli } =
+  await vi.importActual<typeof import("node:child_process")>(
+    "node:child_process",
+  );
+const cli = fileURLToPath(
+  new URL("../../packages/app-config/bin/sync-local.js", import.meta.url),
+);
+vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
 import { syncLocal } from "./sync.js";
 const state = { file: new URL("file:///tmp/unused") };
 const roots: string[] = [];
@@ -23,7 +33,10 @@ function fixture() {
   for (const name of ["a", "b"]) {
     const dir = join(root, "apps", name);
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, "package.json"), JSON.stringify({ name }));
+    writeFileSync(
+      join(dir, "package.json"),
+      JSON.stringify({ name, scripts: { "sync:local": "sync-local" } }),
+    );
     writeFileSync(
       join(dir, ".env.development"),
       "# keep comment\nVITE_OLD=old\nVITE_KEEP=old\nVITE_PRIVATE=value\n",
@@ -35,6 +48,20 @@ function fixture() {
   }
   state.file = new URL("file://" + join(root, "global.yaml"));
   writeFileSync(state.file, "local:\n  KEEP: new\n  OLD: null\n");
+  vi.mocked(execFileSync).mockImplementation((_command, args) => {
+    for (const name of ["a", "b"])
+      executeCli(
+        process.execPath,
+        [
+          cli,
+          "--global",
+          fileURLToPath(state.file),
+          ...(args?.includes("--dry-run") ? ["--dry-run"] : []),
+        ],
+        { cwd: join(root, "apps", name), stdio: "pipe" },
+      );
+    return "";
+  });
   return root;
 }
 it("removes tombstones from all native files before consuming them", () => {
@@ -65,5 +92,17 @@ it("retains tombstones if any native write fails", () => {
   rmSync(join(root, "apps/b/.env.development"));
   mkdirSync(join(root, "apps/b/.env.development"));
   expect(() => syncLocal(root, false, state.file)).toThrow();
+  expect(readFileSync(state.file, "utf8")).toContain("OLD");
+});
+
+it("keeps tombstones when a package has no sync task", () => {
+  const root = fixture();
+  writeFileSync(
+    join(root, "apps/b/package.json"),
+    JSON.stringify({ name: "b" }),
+  );
+  expect(() => syncLocal(root, false, state.file)).toThrow(
+    "Missing sync:local",
+  );
   expect(readFileSync(state.file, "utf8")).toContain("OLD");
 });

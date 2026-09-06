@@ -1,29 +1,65 @@
 export type DeployChannel = "staging" | "release" | "preview";
-export type Target = { package: string; path: string };
+export type Target = { path: string; workerName?: string };
+type TargetInput = { package: string; path: string };
 export type Context = {
   channel: DeployChannel;
   prNumber: number;
-  targets: Target[];
+  targets: ReadonlyMap<string, Target>;
+  profile: "staging" | "release";
 };
-export function validateContext(
-  channel: string | undefined,
-  pr: number | undefined,
-): boolean {
-  return (
-    ["staging", "release", "preview"].includes(channel ?? "") &&
-    (channel !== "preview" || (Number.isSafeInteger(pr) && pr! > 0))
+
+// Main Logic
+
+export function parseContext(env: NodeJS.ProcessEnv = process.env): Context {
+  const channel = parseChannel(env.DEPLOY_CHANNEL);
+  const prNumber = parsePrNumber(env.PR_NUMBER, channel);
+  const targets = mergeTargets(
+    parseTargets(env.TARGETS),
+    parseWorkerNames(env.WORKER_NAMES),
+  );
+  const profile = resolveProfile(channel);
+
+  return { channel, profile, prNumber, targets };
+}
+
+// Helper
+
+function parseChannel(value: string | undefined): DeployChannel {
+  if (value !== "staging" && value !== "release" && value !== "preview")
+    throw new Error(
+      "Invalid DEPLOY_CHANNEL; expected staging, release, or preview",
+    );
+  return value;
+}
+
+function parsePrNumber(
+  value: string | undefined,
+  channel: DeployChannel,
+): number {
+  // updateではPR番号を使用しないため、入力にかかわらず未使用値に揃える。
+  if (channel !== "preview") return -1;
+  const prNumber = Number(value);
+  if (!Number.isSafeInteger(prNumber) || prNumber <= 0)
+    throw new Error("Invalid PR_NUMBER; preview requires a positive integer");
+  return prNumber;
+}
+
+function mergeTargets(
+  targets: TargetInput[],
+  workers: ReadonlyMap<string, string>,
+): ReadonlyMap<string, Target> {
+  // Worker名のない共有パッケージも対象として保持する。対象外のWorkerは取り込まない。
+  return new Map(
+    targets.map(({ package: name, path }) => {
+      const workerName = workers.get(name);
+      return [name, workerName === undefined ? { path } : { path, workerName }];
+    }),
   );
 }
-export function parseContext(env: NodeJS.ProcessEnv = process.env): Context {
-  const channel = env.DEPLOY_CHANNEL;
-  const prNumber = Number(env.PR_NUMBER);
-  if (!validateContext(channel, prNumber))
-    throw new Error(
-      "Invalid DEPLOY_CHANNEL or PR_NUMBER (preview requires a positive integer)",
-    );
-  if (!env.TARGETS)
-    throw new Error("TARGETS is required as JSON [{package,path}]");
-  const targets: unknown = JSON.parse(env.TARGETS);
+
+function parseTargets(value: string | undefined): TargetInput[] {
+  if (!value) throw new Error("TARGETS is required as JSON [{package,path}]");
+  const targets: unknown = JSON.parse(value);
   if (
     !Array.isArray(targets) ||
     targets.some(
@@ -37,12 +73,24 @@ export function parseContext(env: NodeJS.ProcessEnv = process.env): Context {
     )
   )
     throw new Error("Invalid TARGETS; expected [{package,path}]");
-  return {
-    channel: channel as DeployChannel,
-    prNumber: channel === "preview" ? prNumber : -1,
-    targets,
-  };
+  return targets;
 }
-export function workerName(name: string, context: Context): string {
-  return `${name}-${context.channel === "preview" ? `preview-pr-${context.prNumber}` : context.channel}`;
+
+function parseWorkerNames(value: string | undefined): Map<string, string> {
+  // 接続先の情報はリポジトリ側で収集済み。他パッケージのファイルは探索しない。
+  const raw: unknown = JSON.parse(value ?? "{}");
+  if (
+    !raw ||
+    typeof raw !== "object" ||
+    Array.isArray(raw) ||
+    Object.values(raw).some((name) => typeof name !== "string" || !name)
+  )
+    throw new Error(
+      "Invalid WORKER_NAMES; expected package-to-Worker-name JSON object",
+    );
+  return new Map(Object.entries(raw) as [string, string][]);
+}
+
+function resolveProfile(channel: DeployChannel): Context["profile"] {
+  return channel === "release" ? "release" : "staging";
 }

@@ -34,5 +34,63 @@ describe("deployment context", () => {
         PR_NUMBER: "-1",
         TARGETS: "[]",
       }),
-    ).toEqual({ channel: "release", prNumber: -1, targets: [] }));
+    ).toEqual({
+      channel: "release",
+      prNumber: -1,
+      targets: new Map(),
+      profile: "release",
+    }));
+});
+
+it("parses Worker names from the supplied environment", () => {
+  const context = parseContext({
+    DEPLOY_CHANNEL: "preview",
+    PR_NUMBER: "42",
+    TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
+    WORKER_NAMES: '{"api":"bare-api"}',
+  });
+  expect(context.targets.get("api")).toEqual({
+    path: "apps/api",
+    workerName: "bare-api",
+  });
+});
+
+it.each([
+  "null",
+  "[]",
+  '{"api":42}',
+  '{"api":""}',
+  '{"api":null}',
+  "true",
+  "invalid JSON",
+])("rejects invalid Worker metadata %s", (value) => {
+  expect(() =>
+    parseContext({
+      DEPLOY_CHANNEL: "preview",
+      PR_NUMBER: "1",
+      TARGETS: "[]",
+      WORKER_NAMES: value,
+    }),
+  ).toThrow();
+});
+
+it.each([
+  ["preview", "staging"],
+  ["staging", "staging"],
+  ["release", "release"],
+])("resolves profile for %s", (channel, profile) => {
+  expect(
+    parseContext({ DEPLOY_CHANNEL: channel, PR_NUMBER: "42", TARGETS: "[]" }),
+  ).toMatchObject({ profile });
+});
+
+it("keeps non-Worker targets and excludes unselected Worker metadata", () => {
+  const context = parseContext({
+    DEPLOY_CHANNEL: "staging",
+    TARGETS: JSON.stringify([{ package: "library", path: "packages/library" }]),
+    WORKER_NAMES: JSON.stringify({ other: "other-worker" }),
+  });
+  expect([...context.targets]).toEqual([
+    ["library", { path: "packages/library" }],
+  ]);
 });

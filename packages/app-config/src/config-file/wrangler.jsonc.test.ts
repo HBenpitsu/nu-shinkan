@@ -58,3 +58,15 @@ describe("wrangler.jsonc patch", () => {
     expect(parseJsonc(patched)["services"][2]["service"]).toBe("new");
   });
 });
+
+it("deletes null vars while preserving comments and unrelated settings", () => {
+  const result = testExport.patch(
+    '{ // comment\n "name":"api", "vars":{"OLD":"old","PRIVATE":"keep"}}',
+    { vars: { OLD: null, NEW: "new" } },
+  );
+  expect(result).toContain("// comment");
+  expect(parseJsonc(result)).toEqual({
+    name: "api",
+    vars: { PRIVATE: "keep", NEW: "new" },
+  });
+});

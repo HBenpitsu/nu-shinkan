@@ -22,9 +22,6 @@
       "cache": false,
       "dependsOn": ["^ui_test:prepare"]
     },
-    "env:sync": {
-      "dependsOn": ["^env:sync"]
-    },
     "deploy": {
       "cache": false,
       "env": [
@@ -41,8 +38,11 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml"
       ],
-      "outputs": [".generated/**", "dist/**"],
+      "outputs": ["wrangler.deploy.jsonc", ".env.deploy", "dist/**"],
       "env": ["DEPLOY_CHANNEL", "PR_NUMBER", "TARGETS", "WORKER_NAMES"]
+    },
+    "sync:local": {
+      "cache": false
     }
   }
 }

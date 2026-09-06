@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173 --mode development",
-    "deploy": "wrangler deploy --config .generated/wrangler.jsonc --minify",
+    "deploy": "wrangler deploy --config wrangler.deploy.jsonc --minify",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview --mode development",
@@ -13,7 +13,8 @@
     "ui_test": "playwright test",
     "resolve-deps": "playwright install --with-deps",
     "ui_test:report": "playwright show-report --host 0.0.0.0",
-    "build": "app-build"
+    "build": "app-build",
+    "sync:local": "sync-local"
   },
   "dependencies": {
     "@repo/dummy-preview-api": "workspace:*",

@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { parseDeployment } from "@repo/app-config/deployment";
+import { asDeployment } from "@repo/app-config/deployment";
 import {
   buildConnectionGraph,
   buildWorkspaceConnectionGraph,
@@ -16,15 +16,15 @@ it("selects every entry path, including cycles, but not unrelated dependencies",
     new Map([
       [
         "api",
-        parseDeployment({
+        asDeployment({
           connections: { urls: { SELF: "api", X: "missing" } },
         }),
       ],
-      ["a", parseDeployment({ connections: { urls: { API: "api", B: "b" } } })],
-      ["b", parseDeployment({ connections: { bindings: { A: "a" } } })],
+      ["a", asDeployment({ connections: { urls: { API: "api", B: "b" } } })],
+      ["b", asDeployment({ connections: { bindings: { A: "a" } } })],
       [
         "web",
-        parseDeployment({
+        asDeployment({
           reviewEntry: true,
           connections: {
             bindings: { A: "a", B: "b" },
@@ -32,7 +32,7 @@ it("selects every entry path, including cycles, but not unrelated dependencies",
           },
         }),
       ],
-      ["batch", parseDeployment({ connections: { urls: { API: "api" } } })],
+      ["batch", asDeployment({ connections: { urls: { API: "api" } } })],
     ]),
   );
   expect(

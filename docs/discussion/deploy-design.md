@@ -189,7 +189,7 @@ Workflow は環境変数を介して次の入力を `build` スクリプトへ�
 
 ### デプロイアーティファクト
 
-各パッケージのデプロイ用 `build` は，`@repo/app-config/materialize` を利用して，パッケージ直下に `.generated/.env.deploy` と `.generated/wrangler.jsonc` を生成します．frontend では，配信するビルド成果物 `dist` も用意します．
+各パッケージのデプロイ用 `build` は，`@repo/app-config` の `app-build` を利用して，パッケージ直下に `.env.deploy` と `wrangler.deploy.jsonc` を生成します．frontend では，配信するビルド成果物 `dist` も用意します．
 
 purpose が `update` の場合は，環境設定の設計に従い，対応する profile の値を反映します．preview では staging profile を基礎に生成し，計画した接続方針で上書きします．設定値の優先順位は，高い順に次のとおりです．
 
@@ -198,7 +198,7 @@ purpose が `update` の場合は，環境設定の設計に従い，対応す�
 3. `globalRuntimeEnvs.yaml` の対応する profile の設定．
 4. 各パッケージのネイティブファイルの設定．
 
-preview の `.generated/wrangler.jsonc` は `name` を preview Worker 名にし，`routes` を削除してカスタムドメインを無効化します．この構成の Worker 間通信には Service Binding を使用する方針とし，Worker から別の Worker への直接の URL fetch に依存しない構成にします．
+preview の `wrangler.deploy.jsonc` は `name` を preview Worker 名にし，`routes` を削除してカスタムドメインを無効化します．この構成の Worker 間通信には Service Binding を使用する方針とし，Worker から別の Worker への直接の URL fetch に依存しない構成にします．
 
 ### 対象が空の場合
 

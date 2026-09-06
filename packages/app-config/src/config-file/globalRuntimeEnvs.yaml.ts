@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import YAML from "yaml";
-import { mapping, variables, type Variables } from "./deployment.yaml.js";
+import {
+  asRecord,
+  asVariables,
+  asNullableVariables,
+  type Variables,
+} from "./parse.js";
 export type GlobalRuntimeEnvs = {
   local: Record<string, string | null>;
   staging: Variables;
@@ -10,22 +15,21 @@ export const globalFile = new URL(
   "../../globalRuntimeEnvs.yaml",
   import.meta.url,
 );
-export function parseGlobalRuntimeEnvs(value: unknown): GlobalRuntimeEnvs {
-  const raw = mapping(value, "globalRuntimeEnvs");
-  const local = mapping(raw.local, "local");
-  return {
-    local: Object.fromEntries(
-      Object.entries(local).map(([key, val]) => [
-        key,
-        val === null ? null : variables({ [key]: val }, "local")[key]!,
-      ]),
-    ),
-    staging: variables(raw.staging, "staging"),
-    release: variables(raw.release, "release"),
-  };
-}
+
+// Main Logic
+
 export function readGlobalRuntimeEnvs(): GlobalRuntimeEnvs {
-  return parseGlobalRuntimeEnvs(
+  return asGlobalRuntimeEnvs(
     YAML.parse(readFileSync(globalFile, "utf8")) ?? {},
   );
+}
+
+export function asGlobalRuntimeEnvs(value: unknown): GlobalRuntimeEnvs {
+  const raw = asRecord(value, "globalRuntimeEnvs");
+  return {
+    // localのnullは削除指示なので、文字列化せず同期処理へ渡す。
+    local: asNullableVariables(raw.local, "local"),
+    staging: asVariables(raw.staging, "staging"),
+    release: asVariables(raw.release, "release"),
+  };
 }

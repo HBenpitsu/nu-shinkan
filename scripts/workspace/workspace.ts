@@ -1,22 +1,17 @@
 import { existsSync, readFileSync, globSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import YAML from "yaml";
-export function workspaceRoot(start = process.cwd()): string {
-  let current = resolve(start);
-  while (!existsSync(join(current, "pnpm-workspace.yaml"))) {
-    const parent = dirname(current);
-    if (parent === current) throw new Error("pnpm-workspace.yaml not found");
-    current = parent;
-  }
-  return current;
-}
-export function workspacePackages(
-  root = workspaceRoot(),
+
+// Main Logic
+
+export function listWorkspacePackages(
+  root = findWorkspaceRoot(),
 ): { package: string; path: string }[] {
   const config = YAML.parse(
     readFileSync(join(root, "pnpm-workspace.yaml"), "utf8"),
   );
   const patterns = config.packages as string[];
+  // pnpmの否定パターンはglobの除外条件として渡す。
   const dirs = globSync(
     patterns.filter((p) => !p.startsWith("!")),
     {
@@ -33,4 +28,16 @@ export function workspacePackages(
       return [{ package: manifest.name as string, path }];
     })
     .sort((a, b) => a.package.localeCompare(b.package));
+}
+
+// Helper
+
+export function findWorkspaceRoot(start = process.cwd()): string {
+  let current = resolve(start);
+  while (!existsSync(join(current, "pnpm-workspace.yaml"))) {
+    const parent = dirname(current);
+    if (parent === current) throw new Error("pnpm-workspace.yaml not found");
+    current = parent;
+  }
+  return current;
 }

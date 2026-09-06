@@ -459,3 +459,13 @@ GitHub Actions の起動，コメント投稿，Cloudflare への実 deploy／�
 - 過去の改名・途中失敗を含む preview Worker の列挙／削除，共有資源の残存確認，通知失敗後の通知のみ再試行．
 
 これらの実環境検証まで成功したことを，本記録は意味しない．第 0〜7 節のコード移行とローカル検証を完了し，実環境の結合検証を残した状態である．
+
+
+## 生成先の変更
+
+デプロイ設定はパッケージ直下の `wrangler.deploy.jsonc` と `.env.deploy` に生成する方式へ変更した。本文中の `.generated` に関する記録は変更前の構成を示す。元設定と生成設定が同じディレクトリにあるため、Wranglerの相対パス補正は不要となる。ViteのenvDirはlocal/deployともパッケージ直下とし、modeで環境ファイルを選ぶ。
+
+
+## 設定生成の入口の整理
+
+独立した `materialize` CLIはリポジトリ内に利用者がないため、`src/materialize.ts` とbin登録を削除した。設定生成は `app-build` が内部の `src/materialize/` モジュールを利用して行う。本文中のmaterialize binに関する記述は旧構成の記録である。

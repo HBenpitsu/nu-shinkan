@@ -3,13 +3,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname } from "path";
 
 const src = `${cwd()}/.env.development`;
-const gen = `${cwd()}/.generated/.env.deploy`;
+const gen = `${cwd()}/.env.deploy`;
 
 export type DotenvVariables = { [key: string]: string };
+
+// Main Logic
 
 function exists(): boolean {
   return existsSync(src);
 }
+
 function read(): DotenvVariables {
   const content = readFileSync(src, "utf-8");
   const lines = content.split("\n");
@@ -33,42 +36,16 @@ function read(): DotenvVariables {
   }
   return result;
 }
-function patch(original: string, values: Partial<DotenvVariables>): string {
-  const lines = original.split("\n");
-  const result: string[] = [];
-  // patch with values
-  for (const line of lines) {
-    const lineTrimmed = line.trim();
-    if (!lineTrimmed || lineTrimmed.startsWith("#")) {
-      result.push(line);
-      continue;
-    }
 
-    let [key] = lineTrimmed.split("=");
-    if (!key) {
-      result.push(line);
-      continue;
-    }
-    key = key.trim();
-    if (values[key] === undefined) {
-      result.push(line);
-      continue;
-    } else {
-      result.push(`${key}=${values[key]}`);
-      delete values[key];
-    }
-  }
-  // append remaining new values
-  for (const [key, value] of Object.entries(values)) {
-    result.push(`${key}=${value}`);
-  }
-  return result.join("\n");
-}
-function modify(values: Partial<DotenvVariables>) {
+function modify(
+  values: Record<string, string | null | undefined>,
+  dryRun = false,
+) {
   const originalContent = readFileSync(src, "utf-8");
   const patchedContent = patch(originalContent, values);
-  writeFileSync(src, patchedContent, "utf-8");
+  if (!dryRun) writeFileSync(src, patchedContent, "utf-8");
 }
+
 function generate(values: DotenvVariables) {
   if (!existsSync(dirname(gen))) {
     mkdirSync(dirname(gen), { recursive: true });
@@ -78,8 +55,11 @@ function generate(values: DotenvVariables) {
     .join("\n");
   writeFileSync(gen, content, "utf-8");
 }
-function prefix(values: DotenvVariables): DotenvVariables {
-  const prefixed: DotenvVariables = {};
+
+function withVitePrefix<T extends string | null>(
+  values: Record<string, T>,
+): Record<string, T> {
+  const prefixed: Record<string, T> = {};
   for (const [key, value] of Object.entries(values)) {
     if (key.startsWith("VITE_")) {
       prefixed[key] = value;
@@ -90,6 +70,37 @@ function prefix(values: DotenvVariables): DotenvVariables {
   return prefixed;
 }
 
+// Helper
+
+function patch(
+  original: string,
+  values: Record<string, string | null | undefined>,
+): string {
+  const remaining = new Set(Object.keys(values));
+  const result: string[] = [];
+  // コメントと対象外の行を保持し、指定キーの重複は一つにまとめる。
+  for (const line of original.split("\n")) {
+    const equal = line.indexOf("=");
+    const key = line.slice(0, equal).trim();
+    if (
+      equal < 0 ||
+      line.trimStart().startsWith("#") ||
+      !Object.hasOwn(values, key) ||
+      values[key] === undefined
+    ) {
+      result.push(line);
+      continue;
+    }
+    if (remaining.has(key) && values[key] !== null)
+      result.push(`${key}=${JSON.stringify(values[key])}`);
+    remaining.delete(key);
+  }
+  // nullは削除指示。新規キーでもnull自体を書き込まない。
+  for (const key of remaining)
+    if (values[key] !== null && values[key] !== undefined)
+      result.push(`${key}=${JSON.stringify(values[key])}`);
+  return result.join("\n");
+}
 export const testExport = {
   patch,
 };
@@ -98,5 +109,5 @@ export const dotenv = {
   read,
   modify,
   generate,
-  prefix,
+  withVitePrefix,
 };

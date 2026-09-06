@@ -1,8 +1,8 @@
 import { runTask } from "./run.js";
-import { workspacePackages } from "./workspace.js";
+import { listWorkspacePackages } from "./workspace.js";
 const input: unknown = JSON.parse(process.env.PACKAGES ?? "[]");
 if (!Array.isArray(input)) throw new Error("Expected package array");
-const all = workspacePackages();
+const all = listWorkspacePackages();
 const packages = input.map((p) => {
   const pkg = all.find((a) => a.package === p.package && a.path === p.path);
   if (!pkg) throw new Error("Unknown package");

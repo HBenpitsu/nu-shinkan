@@ -3,13 +3,10 @@ import { defineConfig } from "vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   root: "./src",
   publicDir: "./public",
-  envDir:
-    mode === "development"
-      ? import.meta.dirname
-      : import.meta.dirname + "/.generated",
+  envDir: import.meta.dirname,
   build: {
     outDir: "../dist",
     emptyOutDir: true,
@@ -30,4 +27,4 @@ export default defineConfig(({ mode }) => ({
       "@": import.meta.dirname + "/src",
     },
   },
-}));
+});

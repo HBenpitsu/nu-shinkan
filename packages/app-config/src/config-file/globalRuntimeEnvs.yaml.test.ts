@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
-import { parseGlobalRuntimeEnvs } from "./globalRuntimeEnvs.yaml.js";
+import { asGlobalRuntimeEnvs } from "./globalRuntimeEnvs.yaml.js";
 it("preserves local tombstones and normalizes scalars", () =>
   expect(
-    parseGlobalRuntimeEnvs({
+    asGlobalRuntimeEnvs({
       local: { OLD: null, PORT: 42 },
       staging: { ENABLED: true },
     }),
@@ -12,4 +12,4 @@ it("preserves local tombstones and normalizes scalars", () =>
     release: {},
   }));
 it("rejects null in deployment profiles", () =>
-  expect(() => parseGlobalRuntimeEnvs({ release: { KEY: null } })).toThrow());
+  expect(() => asGlobalRuntimeEnvs({ release: { KEY: null } })).toThrow());

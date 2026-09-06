@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 export type Package = { package: string; path: string };
-export function workspacePackages(): Package[] {
+export function listWorkspacePackages(): Package[] {
   return JSON.parse(
     execFileSync("pnpm", ["exec", "tsx", "scripts/workspace/list.ts"], {
       encoding: "utf8",

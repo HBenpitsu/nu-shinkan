@@ -8,8 +8,13 @@ vi.mock("../config-file/globalRuntimeEnvs.yaml.js", () => ({
     release: { SHARED: "release global", GLOBAL: "release" },
   }),
 }));
+import { parseContext } from "./context.js";
 import { readSettings } from "./settings.js";
-import { materializeWrangler } from "./wrangler.js";
+import { generateWranglerJsonc } from "./wrangler.js";
+import {
+  wranglerJsonc,
+  type WranglerConfig,
+} from "../config-file/wrangler.jsonc.js";
 const roots: string[] = [];
 afterEach(() => {
   vi.restoreAllMocks();
@@ -24,7 +29,8 @@ it.each(["staging", "release", "preview"] as const)(
     roots.push(root);
     const app = join(root, "apps/api");
     mkdirSync(app, { recursive: true });
-    vi.stubEnv("WORKER_NAMES", JSON.stringify({ api: "bare-api" }));
+    // 環境変数ではなく、検証済みContextの値を利用することを確認する。
+    vi.stubEnv("WORKER_NAMES", "invalid JSON");
     writeFileSync(join(app, "package.json"), JSON.stringify({ name: "api" }));
     writeFileSync(
       join(app, "wrangler.jsonc"),
@@ -35,11 +41,12 @@ it.each(["staging", "release", "preview"] as const)(
       "envs:\n  staging:\n    SHARED: deployment staging\n    SELF: https://bare-api-staging.example/api/\n  release:\n    SHARED: deployment release\n    SELF: https://bare-api-release.example/api/\nconnections:\n  urls:\n    SELF: api\n",
     );
     vi.spyOn(process, "cwd").mockReturnValue(app);
-    const context = {
-      channel,
-      prNumber: 42,
-      targets: [{ package: "api", path: "apps/api" }],
-    };
+    const context = parseContext({
+      DEPLOY_CHANNEL: channel,
+      PR_NUMBER: "42",
+      TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
+      WORKER_NAMES: JSON.stringify({ api: "bare-api" }),
+    });
     const result = materializeWrangler(
       {
         name: "bare-api",
@@ -61,12 +68,19 @@ it.each(["staging", "release", "preview"] as const)(
   },
 );
 
-it.each(["null", "[]", '{"api":42}', '{"api":""}'])(
-  "rejects invalid Worker metadata %s",
-  (value) => {
-    vi.stubEnv("WORKER_NAMES", value);
-    expect(() =>
-      readSettings({ channel: "preview", prNumber: 1, targets: [] }),
-    ).toThrow("Invalid WORKER_NAMES");
-  },
-);
+// ファイルI/Oだけを置き換え、公開入口を通して生成結果を検証する。
+function materializeWrangler(
+  original: WranglerConfig,
+  settings: Parameters<typeof generateWranglerJsonc>[0],
+  context: Parameters<typeof generateWranglerJsonc>[1],
+): WranglerConfig {
+  vi.spyOn(wranglerJsonc, "exists").mockReturnValue(true);
+  vi.spyOn(wranglerJsonc, "read").mockReturnValue(original);
+  const generate = vi
+    .spyOn(wranglerJsonc, "generate")
+    .mockImplementation(() => {});
+  generate.mockClear();
+  generateWranglerJsonc(settings, context);
+  expect(generate).toHaveBeenCalledTimes(1);
+  return generate.mock.calls[0]![0];
+}

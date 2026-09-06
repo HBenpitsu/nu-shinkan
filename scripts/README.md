@@ -4,7 +4,7 @@
 
 - `workspace/list.ts [--root <directory>]`: workspaceの `{ package, path }[]` をJSONで標準出力へ返す。
 - `connection-graph/build.ts` / `select.ts`: [connection graphの構築とreview対象選定](connection-graph/README.md)。
-- `sync-local/cli.ts [--root <directory>] [--dry-run]`: 共有local設定を全workspaceに反映する。`pnpm sync` の実体。単一パッケージへの反映はapp-configの `syncPackageLocal` を使用し、共有設定のnullは全件成功後にのみ消費する。失敗時はnullを保持して再実行可能にする。`--check` は従来どおりdry-runの別名。
+- `sync-local/sync.ts [--root <directory>] [--dry-run]`: `pnpm sync` の実体。同期対象に `sync:local` タスクが登録されていることを検証し、`turbo run sync:local` を実行する。全件成功後のみ共有local設定のnullを消費する。`--check` はdry-runの別名。各パッケージの `sync:local` はapp-configの `sync-local` CLIを呼び、自分のネイティブ設定だけを更新する。単独実行では共有設定のnullを消費しない。Turboの同期タスクはキャッシュを無効にし、パッケージ間の実行順序は設けない。
 - `deploy-context/build.ts [--root <directory>]`: 標準入力の対象一覧JSONをworkspaceと照合し、対象Workerの `{ "package-name": "bare-worker-name" }` をJSONで標準出力へ返す。Worker設定を持たない対象は含めない。
 
 deploy準備では `deploy-context/build.ts` の出力を `WORKER_NAMES` 環境変数として各パッケージのbuildへ渡す。`DEPLOY_CHANNEL`・`PR_NUMBER`・`TARGETS` と合わせてmaterializeが利用する。preview対象外への接続は既存のprofile設定を維持し、対象内への接続には渡されたWorker名を使う。必要なWorker名がなければ生成時にエラーになる。

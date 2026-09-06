@@ -9,11 +9,12 @@
   "scripts": {
     "test": "vitest",
     "dev": "wrangler dev --host 0.0.0.0 --port 6174 --inspector-port 9230",
-    "deploy": "wrangler deploy --config .generated/wrangler.jsonc --minify",
+    "deploy": "wrangler deploy --config wrangler.deploy.jsonc --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
-    "build": "app-build"
+    "build": "app-build",
+    "sync:local": "sync-local"
   },
   "dependencies": {
     "hono": "^4.13.5"

@@ -89,7 +89,7 @@ export function runDeploy(targets: Package[], manual: boolean) {
         ? readFileSync(logFile, "utf8")
         : "";
     writeFileSync(`.artifacts/deploy/${index}.log`, log);
-    const configFile = join(pkg.path, ".generated/wrangler.jsonc");
+    const configFile = join(pkg.path, "wrangler.deploy.jsonc");
     return resultFor(
       pkg,
       deployable.includes(pkg),
