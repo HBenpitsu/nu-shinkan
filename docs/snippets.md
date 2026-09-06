@@ -11,3 +11,15 @@ try {
     // エラーハンドリング
 }
 ```
+
+## TESTのためだけに公開するインタフェース
+
+```ts
+function someTestedFunction() {
+    // ...
+}
+
+export const testExports = {
+    someTestedFunction
+}
+```

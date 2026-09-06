@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { asDeployment } from "@repo/app-config/deployment";
+import { testExports } from "@repo/app-config/deployment";
 import { ConnectionGraph } from "./graph.js";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -33,15 +33,23 @@ it("selects every entry path, including cycles, but not unrelated dependencies",
     new Map([
       [
         "api",
-        asDeployment({
+        testExports.asDeployment({
           connections: { urls: { SELF: "api", X: "missing" } },
         }),
       ],
-      ["a", asDeployment({ connections: { urls: { API: "api", B: "b" } } })],
-      ["b", asDeployment({ connections: { bindings: { A: "a" } } })],
+      [
+        "a",
+        testExports.asDeployment({
+          connections: { urls: { API: "api", B: "b" } },
+        }),
+      ],
+      [
+        "b",
+        testExports.asDeployment({ connections: { bindings: { A: "a" } } }),
+      ],
       [
         "web",
-        asDeployment({
+        testExports.asDeployment({
           reviewEntry: true,
           connections: {
             bindings: { A: "a", B: "b" },
@@ -49,7 +57,10 @@ it("selects every entry path, including cycles, but not unrelated dependencies",
           },
         }),
       ],
-      ["batch", asDeployment({ connections: { urls: { API: "api" } } })],
+      [
+        "batch",
+        testExports.asDeployment({ connections: { urls: { API: "api" } } }),
+      ],
     ]),
   );
   expect(

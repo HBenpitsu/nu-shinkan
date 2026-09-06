@@ -1,4 +1,4 @@
-import { removeNullFromGlobalRuntimeEnvsYaml } from "@repo/app-config/global";
+import { GlobalRuntimeEnvsYaml } from "@repo/app-config/global";
 import { execFileSync } from "node:child_process";
 import { findWorkspaceRoot } from "../workspace/workspace.js";
 import { parseArgs } from "node:util";
@@ -30,7 +30,9 @@ export function sync(root = findWorkspaceRoot(), dryRun = false): void {
     { cwd: root, stdio: "inherit" },
   );
   // 登録された同期タスクがすべて成功した場合だけ、共有の削除指示を消費する。
-  removeNullFromGlobalRuntimeEnvsYaml(dryRun);
+  const global = new GlobalRuntimeEnvsYaml();
+  global.removeNull();
+  if (!dryRun) global.save();
 }
 
 // EntryPoint

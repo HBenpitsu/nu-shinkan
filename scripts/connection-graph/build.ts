@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { ConnectionGraph } from "./graph.js";
 import { resolve } from "node:path";
-import { readDeploymentYaml } from "@repo/app-config/deployment";
+import { DeploymentYaml } from "@repo/app-config/deployment";
 import {
   listWorkspacePackages,
   findWorkspaceRoot,
@@ -16,7 +16,7 @@ function main(): void {
   const deployments = new Map(
     packages.map((pkg) => [
       pkg.package,
-      readDeploymentYaml(resolve(root, pkg.path)),
+      new DeploymentYaml(resolve(root, pkg.path)),
     ]),
   );
   const graph = ConnectionGraph.fromDeployments(

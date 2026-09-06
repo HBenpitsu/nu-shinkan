@@ -1,14 +1,15 @@
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+vi.mock("node:process", () => ({ cwd: () => process.cwd() }));
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { generateWranglerJsonc } from "./wrangler.js";
-import {
-  wranglerJsonc,
-  type WranglerConfig,
-} from "../config-file/wrangler.jsonc.js";
-import { asDeployment } from "../config-file/deployment.yaml.js";
+import { type WranglerConfig } from "../config-file/wrangler.jsonc.js";
+import { testExports } from "../config-file/deployment.yaml.js";
 import type { Settings } from "./settings.js";
 import { parseContext } from "./context.js";
 const settings: Settings = {
-  deployment: asDeployment({
+  deployment: testExports.asDeployment({
     connections: { bindings: { API: "@repo/api", OTHER: "@repo/other" } },
   }),
   overrides: { ENV: "deployment" },
@@ -94,7 +95,7 @@ it("preserves native staging connections outside targets even if their declarati
       services: [{ binding: "EXTERNAL", service: "shared-native" }],
     },
     {
-      deployment: asDeployment({
+      deployment: testExports.asDeployment({
         connections: { bindings: { EXTERNAL: "unknown-package" } },
       }),
       overrides: {},
@@ -112,13 +113,19 @@ function materializeWrangler(
   settings: Parameters<typeof generateWranglerJsonc>[0],
   context: Parameters<typeof generateWranglerJsonc>[1],
 ): WranglerConfig {
-  vi.spyOn(wranglerJsonc, "exists").mockReturnValue(true);
-  vi.spyOn(wranglerJsonc, "read").mockReturnValue(original);
-  const generate = vi
-    .spyOn(wranglerJsonc, "generate")
-    .mockImplementation(() => {});
-  generate.mockClear();
-  generateWranglerJsonc(settings, context);
-  expect(generate).toHaveBeenCalledTimes(1);
-  return generate.mock.calls[0]![0];
+  const directory = mkdtempSync(join(tmpdir(), "materialize-wrangler-"));
+  const cwd = vi.spyOn(process, "cwd").mockReturnValue(directory);
+  try {
+    writeFileSync(join(directory, "wrangler.jsonc"), JSON.stringify(original));
+    generateWranglerJsonc(settings, context);
+    expect(
+      JSON.parse(readFileSync(join(directory, "wrangler.jsonc"), "utf8")),
+    ).toEqual(original);
+    return JSON.parse(
+      readFileSync(join(directory, "wrangler.deploy.jsonc"), "utf8"),
+    );
+  } finally {
+    cwd.mockRestore();
+    rmSync(directory, { recursive: true, force: true });
+  }
 }

@@ -1,7 +1,7 @@
 import { parseContext } from "./context.js";
 import { expect, it } from "vitest";
 import { resolvePreviewVariables } from "./connections.js";
-import { asDeployment } from "../config-file/deployment.yaml.js";
+import { testExports } from "../config-file/deployment.yaml.js";
 it("preserves URL path/query and leaves connections outside targets unchanged", () => {
   const result = resolvePreviewVariables(
     {
@@ -9,7 +9,7 @@ it("preserves URL path/query and leaves connections outside targets unchanged", 
       OTHER: "https://other-staging.example/",
     },
     {
-      deployment: asDeployment({
+      deployment: testExports.asDeployment({
         connections: { urls: { API: "api", OTHER: "other" } },
       }),
       overrides: {},
@@ -32,7 +32,9 @@ it("rejects a selected URL connection without a base URL", () =>
     resolvePreviewVariables(
       {},
       {
-        deployment: asDeployment({ connections: { urls: { API: "api" } } }),
+        deployment: testExports.asDeployment({
+          connections: { urls: { API: "api" } },
+        }),
         overrides: {},
       },
       parseContext({

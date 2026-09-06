@@ -1,14 +1,11 @@
-import { cwd } from "process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { cwd } from "node:process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import {
   applyEdits,
   modify as modifyJsonc,
   parse as parseJsonc,
 } from "jsonc-parser";
-import { dirname } from "path";
-
-const src = `${cwd()}/wrangler.jsonc`;
-const gen = `${cwd()}/wrangler.deploy.jsonc`;
+import { dirname, resolve } from "node:path";
 
 export type WranglerConfig = {
   name: string;
@@ -27,28 +24,78 @@ type WranglerPatch = Partial<
 
 // Main Logic
 
-function exists(): boolean {
-  return existsSync(src);
-}
+/**
+ * パッケージ内の設定ドキュメント。初回参照時に読み込み、インスタンス内に保持する。
+ * 取得値は独立したスナップショット。外部の更新を読む場合は新しいインスタンスを作る。
+ * 編集はメモリ上で行い、保存メソッドを呼ぶまでファイルには反映しない。
+ */
+export class WranglerJsonc {
+  private readonly src: string;
+  private readonly gen: string;
+  private content?: string;
 
-function read(): WranglerConfig {
-  const content = readFileSync(src, "utf-8");
-  const parsed = parseJsonc(content) as WranglerConfig;
-  return parsed;
-}
-
-function modify(values: WranglerPatch, dryRun = false) {
-  const originalContent = readFileSync(src, "utf-8");
-  const patchedContent = patch(originalContent, values);
-  if (!dryRun) writeFileSync(src, patchedContent, "utf-8");
-}
-
-function generate(values: WranglerConfig) {
-  if (!existsSync(dirname(gen))) {
-    mkdirSync(dirname(gen), { recursive: true });
+  constructor(packagePath: string = cwd()) {
+    this.src = resolve(packagePath, "wrangler.jsonc");
+    this.gen = resolve(packagePath, "wrangler.deploy.jsonc");
   }
-  const content = JSON.stringify(values, null, 2) + "\n";
-  writeFileSync(gen, content, "utf-8");
+
+  exists(): boolean {
+    return existsSync(this.src);
+  }
+
+  private get document(): string {
+    return (this.content ??= readFileSync(this.src, "utf-8"));
+  }
+
+  /** 呼び出し側が変更しても編集中の内容に影響しないスナップショット。 */
+  get data(): WranglerConfig {
+    return parseJsonc(this.document) as WranglerConfig;
+  }
+
+  get name(): string {
+    return this.data.name;
+  }
+
+  get variables(): Record<string, string> {
+    return this.data.vars ?? {};
+  }
+
+  get services(): NonNullable<WranglerConfig["services"]> {
+    return this.data.services ?? [];
+  }
+
+  update(values: WranglerPatch): void {
+    this.content = patch(this.document, values);
+  }
+
+  useProfile(profile: "staging" | "release"): void {
+    const { env, ...base } = this.data;
+    const selected = env?.[profile] ?? {};
+    this.content = JSON.stringify({
+      ...base,
+      ...selected,
+      vars: { ...base.vars, ...selected.vars },
+    });
+  }
+
+  useWorkersDev(): void {
+    for (const key of ["route", "routes"]) {
+      this.content = applyEdits(
+        this.document,
+        modifyJsonc(this.document, [key], undefined, {}),
+      );
+    }
+    this.update({ workers_dev: true });
+  }
+
+  rewriteOriginal(): void {
+    writeFileSync(this.src, this.document, "utf-8");
+  }
+
+  genDeployment(): void {
+    mkdirSync(dirname(this.gen), { recursive: true });
+    writeFileSync(this.gen, JSON.stringify(this.data, null, 2) + "\n", "utf-8");
+  }
 }
 
 // Helper
@@ -150,12 +197,6 @@ function patch(original: string, values: WranglerPatch): string {
 
   return original;
 }
-export const testExport = {
+export const testExports = {
   patch,
-};
-export const wranglerJsonc = {
-  exists,
-  read,
-  modify,
-  generate,
 };

@@ -1,73 +1,77 @@
-import { cwd } from "process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname } from "path";
-
-const src = `${cwd()}/.env.development`;
-const gen = `${cwd()}/.env.deploy`;
+import { cwd } from "node:process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 
 export type DotenvVariables = { [key: string]: string };
 
 // Main Logic
 
-function exists(): boolean {
-  return existsSync(src);
-}
+/**
+ * パッケージ内の設定ドキュメント。初回参照時に読み込み、インスタンス内に保持する。
+ * 取得値は独立したスナップショット。外部の更新を読む場合は新しいインスタンスを作る。
+ * 編集はメモリ上で行い、保存メソッドを呼ぶまでファイルには反映しない。
+ */
+export class Dotenv {
+  private readonly src: string;
+  private readonly gen: string;
+  private content?: string;
 
-function read(): DotenvVariables {
-  const content = readFileSync(src, "utf-8");
-  const lines = content.split("\n");
-  const result: DotenvVariables = {};
-  for (const line of lines) {
-    const equal = line.indexOf("=");
-    if (equal < 0 || line.trimStart().startsWith("#")) continue;
-    const key = line.slice(0, equal);
-    let value = line.slice(equal + 1).trim();
-    if (value.startsWith('"')) {
-      try {
-        value = JSON.parse(value);
-      } catch {
-        /* retain raw value */
-      }
-    } else if (value.startsWith("'") && value.endsWith("'"))
-      value = value.slice(1, -1);
-    if (key && value !== undefined) {
-      result[key.trim()] = value.trim();
+  constructor(packagePath: string = cwd()) {
+    this.src = resolve(packagePath, ".env.development");
+    this.gen = resolve(packagePath, ".env.deploy");
+  }
+
+  exists(): boolean {
+    return existsSync(this.src);
+  }
+
+  private get document(): string {
+    return (this.content ??= readFileSync(this.src, "utf-8"));
+  }
+
+  get variables(): DotenvVariables {
+    const content = this.document;
+    const lines = content.split("\n");
+    const result: DotenvVariables = {};
+    for (const line of lines) {
+      const equal = line.indexOf("=");
+      if (equal < 0 || line.trimStart().startsWith("#")) continue;
+      const key = line.slice(0, equal).trim();
+      const value = line.slice(equal + 1).trim();
+
+      // pick only VITE_ prefixed variables
+      if (!key.startsWith("VITE_")) continue;
+
+      // remove prefix as key
+      const unprefixedKey = key.slice("VITE_".length);
+      result[unprefixedKey] = value;
     }
+    return result;
   }
-  return result;
-}
 
-function modify(
-  values: Record<string, string | null | undefined>,
-  dryRun = false,
-) {
-  const originalContent = readFileSync(src, "utf-8");
-  const patchedContent = patch(originalContent, values);
-  if (!dryRun) writeFileSync(src, patchedContent, "utf-8");
-}
-
-function generate(values: DotenvVariables) {
-  if (!existsSync(dirname(gen))) {
-    mkdirSync(dirname(gen), { recursive: true });
+  updateVariables(values: Record<string, string | null | undefined>): void {
+    const prefixed = Object.fromEntries(
+      Object.entries(values).map(([key, value]) => [
+        key.startsWith("VITE_") ? key : `VITE_${key}`,
+        value,
+      ]),
+    );
+    this.content = patch(this.document, prefixed);
   }
-  const content = Object.entries(values)
-    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-    .join("\n");
-  writeFileSync(gen, content, "utf-8");
-}
 
-function withVitePrefix<T extends string | null>(
-  values: Record<string, T>,
-): Record<string, T> {
-  const prefixed: Record<string, T> = {};
-  for (const [key, value] of Object.entries(values)) {
-    if (key.startsWith("VITE_")) {
-      prefixed[key] = value;
-    } else {
-      prefixed[`VITE_${key}`] = value;
-    }
+  /** 編集中の内容を元ファイルに保存する。 */
+  rewriteOriginal(): void {
+    writeFileSync(this.src, this.document, "utf-8");
   }
-  return prefixed;
+
+  /** 現在の環境変数をデプロイ用の形式で保存する。 */
+  genDeployment(): void {
+    mkdirSync(dirname(this.gen), { recursive: true });
+    const content = Object.entries(this.variables)
+      .map(([key, value]) => `VITE_${key}=${value}`)
+      .join("\n");
+    writeFileSync(this.gen, content, "utf-8");
+  }
 }
 
 // Helper
@@ -92,22 +96,15 @@ function patch(
       continue;
     }
     if (remaining.has(key) && values[key] !== null)
-      result.push(`${key}=${JSON.stringify(values[key])}`);
+      result.push(`${key}=${values[key]}`);
     remaining.delete(key);
   }
   // nullは削除指示。新規キーでもnull自体を書き込まない。
   for (const key of remaining)
     if (values[key] !== null && values[key] !== undefined)
-      result.push(`${key}=${JSON.stringify(values[key])}`);
+      result.push(`${key}=${values[key]}`);
   return result.join("\n");
 }
-export const testExport = {
+export const testExports = {
   patch,
-};
-export const dotenv = {
-  exists,
-  read,
-  modify,
-  generate,
-  withVitePrefix,
 };

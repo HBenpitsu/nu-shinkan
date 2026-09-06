@@ -21,12 +21,21 @@ const packageDirectory = fileURLToPath(
   new URL("../../packages/app-config/", import.meta.url),
 );
 const state = vi.hoisted(() => ({ file: new URL("file:///tmp/unused") }));
-vi.mock("@repo/app-config/global", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@repo/app-config/global")>()),
-  get globalFile() {
-    return state.file;
-  },
-}));
+// 共有設定のI/Oだけを隔離先へ向け、引数なしの実クラスで同期を検証する。
+vi.mock("node:fs", async (importOriginal) => {
+  const original = await importOriginal<typeof import("node:fs")>();
+  const redirect = (path: Parameters<typeof original.readFileSync>[0]) =>
+    path instanceof URL && path.pathname.endsWith("/globalRuntimeEnvs.yaml")
+      ? state.file
+      : path;
+  return {
+    ...original,
+    readFileSync: (...args: Parameters<typeof original.readFileSync>) =>
+      original.readFileSync(redirect(args[0]), args[1]),
+    writeFileSync: (...args: Parameters<typeof original.writeFileSync>) =>
+      original.writeFileSync(redirect(args[0]), args[1], args[2]),
+  };
+});
 vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
 import { sync } from "./sync.js";
 const roots: string[] = [];

@@ -1,7 +1,8 @@
-import { wranglerJsonc } from "@repo/app-config/wrangler";
+import { WranglerJsonc } from "@repo/app-config/wrangler";
 import { execFileSync } from "child_process";
 
-const workerName = wranglerJsonc.read().name;
+const wranglerJsonc = new WranglerJsonc();
+const workerName = wranglerJsonc.name;
 const prNumber = process.env.PR_NUMBER;
 const previewWorkerName = `${workerName}-preview-pr-${prNumber}`;
 const NOT_FOUND_CODE = "[code: 10090]";

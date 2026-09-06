@@ -1,20 +1,28 @@
+vi.mock("node:process", () => ({ cwd: () => process.cwd() }));
 import { afterEach, expect, it, vi } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 vi.mock("../config-file/globalRuntimeEnvs.yaml.js", () => ({
-  readGlobalRuntimeEnvs: () => ({
-    staging: { SHARED: "global", GLOBAL: "staging" },
-    release: { SHARED: "release global", GLOBAL: "release" },
-  }),
+  GlobalRuntimeEnvsYaml: class {
+    variablesFor(profile: "staging" | "release") {
+      return {
+        staging: { SHARED: "global", GLOBAL: "staging" },
+        release: { SHARED: "release global", GLOBAL: "release" },
+      }[profile];
+    }
+  },
 }));
 import { parseContext } from "./context.js";
 import { readSettings } from "./settings.js";
 import { generateWranglerJsonc } from "./wrangler.js";
-import {
-  wranglerJsonc,
-  type WranglerConfig,
-} from "../config-file/wrangler.jsonc.js";
+import { type WranglerConfig } from "../config-file/wrangler.jsonc.js";
 const roots: string[] = [];
 afterEach(() => {
   vi.restoreAllMocks();
@@ -73,13 +81,19 @@ function materializeWrangler(
   settings: Parameters<typeof generateWranglerJsonc>[0],
   context: Parameters<typeof generateWranglerJsonc>[1],
 ): WranglerConfig {
-  vi.spyOn(wranglerJsonc, "exists").mockReturnValue(true);
-  vi.spyOn(wranglerJsonc, "read").mockReturnValue(original);
-  const generate = vi
-    .spyOn(wranglerJsonc, "generate")
-    .mockImplementation(() => {});
-  generate.mockClear();
-  generateWranglerJsonc(settings, context);
-  expect(generate).toHaveBeenCalledTimes(1);
-  return generate.mock.calls[0]![0];
+  const directory = mkdtempSync(join(tmpdir(), "materialize-wrangler-"));
+  const cwd = vi.spyOn(process, "cwd").mockReturnValue(directory);
+  try {
+    writeFileSync(join(directory, "wrangler.jsonc"), JSON.stringify(original));
+    generateWranglerJsonc(settings, context);
+    expect(
+      JSON.parse(readFileSync(join(directory, "wrangler.jsonc"), "utf8")),
+    ).toEqual(original);
+    return JSON.parse(
+      readFileSync(join(directory, "wrangler.deploy.jsonc"), "utf8"),
+    );
+  } finally {
+    cwd.mockRestore();
+    rmSync(directory, { recursive: true, force: true });
+  }
 }

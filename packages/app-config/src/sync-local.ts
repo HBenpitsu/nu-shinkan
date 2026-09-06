@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { dotenv } from "./config-file/dotenv.js";
-import { wranglerJsonc } from "./config-file/wrangler.jsonc.js";
+import { Dotenv } from "./config-file/dotenv.js";
+import { WranglerJsonc } from "./config-file/wrangler.jsonc.js";
 
 import { parseArgs } from "node:util";
-import { readGlobalRuntimeEnvs } from "./config-file/globalRuntimeEnvs.yaml.js";
+import { GlobalRuntimeEnvsYaml } from "./config-file/globalRuntimeEnvs.yaml.js";
 
 // Main Logic
 
@@ -14,7 +14,7 @@ function main(): void {
       check: { type: "boolean" },
     },
   });
-  const local = readGlobalRuntimeEnvs().local;
+  const local = new GlobalRuntimeEnvsYaml().local;
   syncPackageLocal(local, values["dry-run"] || values.check);
 }
 
@@ -22,9 +22,17 @@ function syncPackageLocal(
   local: Record<string, string | null>,
   dryRun = false,
 ): void {
+  const dotenv = new Dotenv();
+  const wranglerJsonc = new WranglerJsonc();
   // 共有設定のnullは消費せず、存在するネイティブ設定にだけ反映する。
-  if (dotenv.exists()) dotenv.modify(dotenv.withVitePrefix(local), dryRun);
-  if (wranglerJsonc.exists()) wranglerJsonc.modify({ vars: local }, dryRun);
+  if (dotenv.exists()) {
+    dotenv.updateVariables(local);
+    if (!dryRun) dotenv.rewriteOriginal();
+  }
+  if (wranglerJsonc.exists()) {
+    wranglerJsonc.update({ vars: local });
+    if (!dryRun) wranglerJsonc.rewriteOriginal();
+  }
 }
 
 // EntryPoint

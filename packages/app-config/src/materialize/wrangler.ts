@@ -1,7 +1,4 @@
-import {
-  wranglerJsonc,
-  type WranglerConfig,
-} from "../config-file/wrangler.jsonc.js";
+import { WranglerJsonc } from "../config-file/wrangler.jsonc.js";
 import type { Context } from "./context.js";
 import {
   buildWorkerName,
@@ -16,53 +13,20 @@ export function generateWranglerJsonc(
   settings: Settings,
   context: Context,
 ): void {
+  const wranglerJsonc = new WranglerJsonc();
   if (!wranglerJsonc.exists()) return;
 
-  const original = wranglerJsonc.read();
-  const resolved = resolveWranglerSettings(original, settings, context);
-  const published = applyPublicationSettings(resolved, context);
-  wranglerJsonc.generate(published);
-}
-
-// Helper
-
-function resolveWranglerSettings(
-  original: WranglerConfig,
-  settings: Settings,
-  context: Context,
-): WranglerConfig {
-  const { env, ...base } = original;
-  const { profile } = context;
-  const selected = env?.[profile] ?? {};
-  // ネイティブ設定 → profile設定 → 共有・パッケージ設定の順で上書きする。
-  const config = {
-    ...base,
-    ...selected,
-    name: buildWorkerName(original.name, context),
+  const name = buildWorkerName(wranglerJsonc.name, context);
+  wranglerJsonc.useProfile(context.profile);
+  wranglerJsonc.update({
+    name,
     vars: resolvePreviewVariables(
-      { ...base.vars, ...selected.vars, ...settings.overrides },
+      { ...wranglerJsonc.variables, ...settings.overrides },
       settings,
       context,
     ),
-  } as WranglerConfig;
-  config.services = resolveServiceBindings(
-    config.services ?? [],
-    settings,
-    context,
-  );
-  return config;
-}
-
-function applyPublicationSettings(
-  original: WranglerConfig,
-  context: Context,
-): WranglerConfig {
-  const config = { ...original };
-  // previewに本番用routeを引き継がず、workers.devで公開する。
-  if (context.channel === "preview") {
-    delete config.routes;
-    delete config.route;
-    config.workers_dev = true;
-  }
-  return config;
+    services: resolveServiceBindings(wranglerJsonc.services, settings, context),
+  });
+  if (context.channel === "preview") wranglerJsonc.useWorkersDev();
+  wranglerJsonc.genDeployment();
 }

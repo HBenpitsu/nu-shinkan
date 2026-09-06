@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testExport } from "./wrangler.jsonc.js";
+import { testExports } from "./wrangler.jsonc.js";
 import { parse as parseJsonc } from "jsonc-parser";
 
 describe("wrangler.jsonc patch", () => {
@@ -40,7 +40,7 @@ describe("wrangler.jsonc patch", () => {
       ],
       NEW_BINDING: "added",
     };
-    const patched = testExport.patch(original, values);
+    const patched = testExports.patch(original, values);
     expect(patched).toContain("// keep this comment");
     expect(patched).toContain('"name": "updated"');
     expect(patched).toContain('"NEW_BINDING": "added"');
@@ -60,7 +60,7 @@ describe("wrangler.jsonc patch", () => {
 });
 
 it("deletes null vars while preserving comments and unrelated settings", () => {
-  const result = testExport.patch(
+  const result = testExports.patch(
     '{ // comment\n "name":"api", "vars":{"OLD":"old","PRIVATE":"keep"}}',
     { vars: { OLD: null, NEW: "new" } },
   );
