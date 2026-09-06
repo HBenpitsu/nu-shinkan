@@ -1,5 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  cpSync,
+  symlinkSync,
   mkdtempSync,
   mkdirSync,
   writeFileSync,
@@ -15,12 +17,18 @@ const { execFileSync: executeCli } =
   await vi.importActual<typeof import("node:child_process")>(
     "node:child_process",
   );
-const cli = fileURLToPath(
-  new URL("../../packages/app-config/bin/sync-local.js", import.meta.url),
+const packageDirectory = fileURLToPath(
+  new URL("../../packages/app-config/", import.meta.url),
 );
+const state = vi.hoisted(() => ({ file: new URL("file:///tmp/unused") }));
+vi.mock("@repo/app-config/global", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@repo/app-config/global")>()),
+  get globalFile() {
+    return state.file;
+  },
+}));
 vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
-import { syncLocal } from "./sync.js";
-const state = { file: new URL("file:///tmp/unused") };
+import { sync } from "./sync.js";
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -46,27 +54,41 @@ function fixture() {
       '{"name":"worker","vars":{"OLD":"old","KEEP":"old","PRIVATE":"value"}}',
     );
   }
-  state.file = new URL("file://" + join(root, "global.yaml"));
+  // CLIを隔離した配置で実行し、本番と同じ相対位置から共有設定を読む。
+  const configDirectory = join(root, "app-config");
+  cpSync(join(packageDirectory, "bin"), join(configDirectory, "bin"), {
+    recursive: true,
+  });
+  writeFileSync(join(configDirectory, "package.json"), '{"type":"module"}');
+  symlinkSync(
+    join(packageDirectory, "node_modules"),
+    join(configDirectory, "node_modules"),
+    "dir",
+  );
+  const cli = join(configDirectory, "bin/sync-local.js");
+  state.file = new URL(
+    "file://" + join(configDirectory, "globalRuntimeEnvs.yaml"),
+  );
   writeFileSync(state.file, "local:\n  KEEP: new\n  OLD: null\n");
   vi.mocked(execFileSync).mockImplementation((_command, args) => {
-    for (const name of ["a", "b"])
+    for (const name of ["a", "b"]) {
+      const manifest = JSON.parse(
+        readFileSync(join(root, "apps", name, "package.json"), "utf8"),
+      );
+      if (!manifest.scripts?.["sync:local"]) continue;
       executeCli(
         process.execPath,
-        [
-          cli,
-          "--global",
-          fileURLToPath(state.file),
-          ...(args?.includes("--dry-run") ? ["--dry-run"] : []),
-        ],
+        [cli, ...(args?.includes("--dry-run") ? ["--dry-run"] : [])],
         { cwd: join(root, "apps", name), stdio: "pipe" },
       );
+    }
     return "";
   });
   return root;
 }
 it("removes tombstones from all native files before consuming them", () => {
   const root = fixture();
-  syncLocal(root, false, state.file);
+  sync(root, false);
   for (const name of ["a", "b"]) {
     const dir = join(root, "apps", name);
     const env = readFileSync(join(dir, ".env.development"), "utf8");
@@ -81,7 +103,7 @@ it("removes tombstones from all native files before consuming them", () => {
 });
 it("dry-run leaves native files and tombstones intact", () => {
   const root = fixture();
-  syncLocal(root, true, state.file);
+  sync(root, true);
   expect(readFileSync(join(root, "apps/a/.env.development"), "utf8")).toContain(
     "VITE_OLD=old",
   );
@@ -91,18 +113,22 @@ it("retains tombstones if any native write fails", () => {
   const root = fixture();
   rmSync(join(root, "apps/b/.env.development"));
   mkdirSync(join(root, "apps/b/.env.development"));
-  expect(() => syncLocal(root, false, state.file)).toThrow();
+  expect(() => sync(root, false)).toThrow();
   expect(readFileSync(state.file, "utf8")).toContain("OLD");
 });
 
-it("keeps tombstones when a package has no sync task", () => {
+it("leaves unregistered packages untouched and consumes tombstones after registered tasks succeed", () => {
   const root = fixture();
   writeFileSync(
     join(root, "apps/b/package.json"),
     JSON.stringify({ name: "b" }),
   );
-  expect(() => syncLocal(root, false, state.file)).toThrow(
-    "Missing sync:local",
+  sync(root, false);
+  expect(
+    readFileSync(join(root, "apps/a/.env.development"), "utf8"),
+  ).not.toContain("VITE_OLD");
+  expect(readFileSync(join(root, "apps/b/.env.development"), "utf8")).toContain(
+    "VITE_OLD=old",
   );
-  expect(readFileSync(state.file, "utf8")).toContain("OLD");
+  expect(readFileSync(state.file, "utf8")).not.toContain("OLD");
 });

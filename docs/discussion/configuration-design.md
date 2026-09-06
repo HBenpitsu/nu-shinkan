@@ -138,6 +138,6 @@ release:
 
 `packages/app-config` は各パッケージの設定読み取り・変換・生成を担当し、workspace列挙や他パッケージの設定ファイル読み取りは行わない。リポジトリ全体の列挙・接続グラフ・同期・接続先情報収集は `scripts/` が担当する。
 
-`pnpm sync` は `scripts/sync-local/sync.ts` から `turbo run sync:local` を実行し、全パッケージへの反映に成功してから共有local設定のnullを削除する。各パッケージの `sync:local` はapp-configの `sync-local` CLIを実行する。app-configの単一パッケージ更新処理は共有設定を変更しない。
+`pnpm sync` は `scripts/sync-env/sync.ts` から `turbo run sync:local` を実行し、`sync:local` を登録した全パッケージへの反映に成功してから共有local設定のnullを削除する。タスク未登録のパッケージは配布対象外とする。各パッケージの `sync:local` はapp-configの `sync-local` CLIを実行する。app-configの単一パッケージ更新処理は共有設定を変更しない。
 
 デプロイ準備ではscripts側が対象の実在性を検証し、対象Workerの名前を収集する。各パッケージのmaterializeには、その結果を `WORKER_NAMES`（パッケージ名からWorkerの基底名へのJSONオブジェクト）で渡す。materializeとbuildは引き続き各パッケージの文脈で実行する。設定の優先順位とpreview内外の接続規則は変更しない。CLIの契約は [scriptsの説明](../../scripts/README.md) を参照する。

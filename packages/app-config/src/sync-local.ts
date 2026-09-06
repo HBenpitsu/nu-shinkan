@@ -1,14 +1,9 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
-import YAML from "yaml";
 import { dotenv } from "./config-file/dotenv.js";
 import { wranglerJsonc } from "./config-file/wrangler.jsonc.js";
 
 import { parseArgs } from "node:util";
-import {
-  globalFile,
-  asGlobalRuntimeEnvs,
-} from "./config-file/globalRuntimeEnvs.yaml.js";
+import { readGlobalRuntimeEnvs } from "./config-file/globalRuntimeEnvs.yaml.js";
 
 // Main Logic
 
@@ -17,12 +12,9 @@ function main(): void {
     options: {
       "dry-run": { type: "boolean" },
       check: { type: "boolean" },
-      global: { type: "string" },
     },
   });
-  const local = asGlobalRuntimeEnvs(
-    YAML.parse(readFileSync(values.global ?? globalFile, "utf8")),
-  ).local;
+  const local = readGlobalRuntimeEnvs().local;
   syncPackageLocal(local, values["dry-run"] || values.check);
 }
 
