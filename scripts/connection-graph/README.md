@@ -2,6 +2,8 @@
 
 [デプロイ設計](../../docs/discussion/deploy-design.md#review-に共通の-connection-グラフ)の review 用対象選定を、独立した CLI として提供する。リポジトリルートで実行する。
 
+キャッシュ可能性を考慮し，エントリーポイントとして，`build.ts`と`select.ts`を提供している．
+
 ```sh
 pnpm exec tsx scripts/connection-graph/build.ts > connection-graph.json
 pnpm exec tsx scripts/connection-graph/select.ts \
