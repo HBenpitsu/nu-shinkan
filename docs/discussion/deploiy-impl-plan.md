@@ -469,3 +469,8 @@ GitHub Actions の起動，コメント投稿，Cloudflare への実 deploy／�
 ## 設定生成の入口の整理
 
 独立した `materialize` CLIはリポジトリ内に利用者がないため、`src/materialize.ts` とbin登録を削除した。設定生成は `app-build` が内部の `src/materialize/` モジュールを利用して行う。本文中のmaterialize binに関する記述は旧構成の記録である。
+
+
+## 計画スキーマの更新
+
+現行の計画は `changes: string[]` と `targets: { package, path, workerName? }[]` を返す。Worker基底名は計画時に付与し、準備時の再収集と `WORKER_NAMES` は廃止する。旧記述のchangesのpathおよびWorker情報の別途受け渡しは現行仕様には適用しない。

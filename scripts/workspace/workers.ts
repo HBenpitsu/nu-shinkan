@@ -1,10 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse, type ParseError } from "jsonc-parser";
-import {
-  listWorkspacePackages,
-  findWorkspaceRoot,
-} from "../workspace/workspace.js";
+import { listWorkspacePackages, findWorkspaceRoot } from "./workspace.js";
 
 // Main Logic
 

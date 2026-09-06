@@ -4,6 +4,8 @@ import {
   list,
   validatePicks,
   type Package,
+  type DeployTarget,
+  resolveWorkers,
 } from "./workspace.js";
 import { reviewTargets } from "./graph.js";
 export type Request = {
@@ -13,10 +15,10 @@ export type Request = {
   base?: string;
   picks: string[];
 };
-export type Plan = { changes: Package[]; targets: Package[] };
+export type Plan = { changes: string[]; targets: DeployTarget[] };
 export function plan(
   request: Request,
-  deps = { list, commit, isAncestor, reviewTargets },
+  deps = { list, commit, isAncestor, reviewTargets, resolveWorkers },
 ): Plan {
   const { channel, source, head, base, picks } = request;
   if (
@@ -26,7 +28,11 @@ export function plan(
     throw new Error("Invalid channel/selection source");
   deps.commit(head);
   const all = deps.list();
-  if (source === "full") return { changes: all, targets: all };
+  if (source === "full")
+    return {
+      changes: all.map((p) => p.package),
+      targets: deps.resolveWorkers(all),
+    };
   let changes: Package[], starts: Package[];
   if (source === "manual-pick") {
     const names = validatePicks(picks, all);
@@ -43,9 +49,15 @@ export function plan(
     } catch (error) {
       if (channel === "preview") throw error;
       console.warn(`Falling back to full at ${head}: ${String(error)}`);
-      return { changes: all, targets: all };
+      return {
+        changes: all.map((p) => p.package),
+        targets: deps.resolveWorkers(all),
+      };
     }
   }
   const targets = channel === "preview" ? deps.reviewTargets(starts) : starts;
-  return { changes, targets };
+  return {
+    changes: changes.map((p) => p.package),
+    targets: deps.resolveWorkers(targets),
+  };
 }

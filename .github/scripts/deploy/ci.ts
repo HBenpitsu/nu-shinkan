@@ -4,9 +4,9 @@ const input: unknown = JSON.parse(process.env.PACKAGES ?? "[]");
 if (!Array.isArray(input)) throw new Error("Expected package array");
 const all = listWorkspacePackages();
 const packages = input.map((p) => {
-  const pkg = all.find((a) => a.package === p.package && a.path === p.path);
+  const pkg = all.find((a) => a.package === p);
   if (!pkg) throw new Error("Unknown package");
-  return pkg;
+  return pkg.package;
 });
 const task = process.argv[2];
 if (!task || !["lint", "ui_test", "test"].includes(task))

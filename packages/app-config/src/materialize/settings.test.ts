@@ -29,8 +29,6 @@ it.each(["staging", "release", "preview"] as const)(
     roots.push(root);
     const app = join(root, "apps/api");
     mkdirSync(app, { recursive: true });
-    // 環境変数ではなく、検証済みContextの値を利用することを確認する。
-    vi.stubEnv("WORKER_NAMES", "invalid JSON");
     writeFileSync(join(app, "package.json"), JSON.stringify({ name: "api" }));
     writeFileSync(
       join(app, "wrangler.jsonc"),
@@ -44,8 +42,9 @@ it.each(["staging", "release", "preview"] as const)(
     const context = parseContext({
       DEPLOY_CHANNEL: channel,
       PR_NUMBER: "42",
-      TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
-      WORKER_NAMES: JSON.stringify({ api: "bare-api" }),
+      TARGETS: JSON.stringify([
+        { package: "api", path: "apps/api", workerName: "bare-api" },
+      ]),
     });
     const result = materializeWrangler(
       {

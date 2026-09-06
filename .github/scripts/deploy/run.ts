@@ -13,7 +13,7 @@ import { resultFor, type Summary } from "./results.js";
 import type { Package } from "./workspace.js";
 export function taskArgs(
   task: string,
-  packages: Package[],
+  packages: string[],
 ): string[] | undefined {
   return packages.length
     ? [
@@ -22,13 +22,13 @@ export function taskArgs(
         "run",
         task,
         "--only",
-        ...packages.map((p) => `--filter=${p.package}`),
+        ...packages.map((p) => `--filter=${p}`),
       ]
     : undefined;
 }
 export function runTask(
   task: string,
-  packages: Package[],
+  packages: string[],
   extra: string[] = [],
 ): void {
   const args = taskArgs(task, packages);
@@ -54,7 +54,10 @@ export function runDeploy(targets: Package[], manual: boolean) {
   // Prevent an interrupted task from being associated with a previous run's log.
   for (const pkg of deployable)
     rmSync(join(pkg.path, ".turbo/turbo-deploy.log"), { force: true });
-  const args = taskArgs("deploy", deployable);
+  const args = taskArgs(
+    "deploy",
+    deployable.map((p) => p.package),
+  );
   const execution = args
     ? spawnSync(
         "pnpm",

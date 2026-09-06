@@ -5,6 +5,11 @@ it("never runs unfiltered tasks for empty selection", () => {
   expect(() => runTask("deploy", [])).not.toThrow();
 });
 it("uses literal argv and disables dependency task expansion", () =>
-  expect(
-    taskArgs("test", [{ package: "@repo/api", path: "apps/api" }]),
-  ).toEqual(["exec", "turbo", "run", "test", "--only", "--filter=@repo/api"]));
+  expect(taskArgs("test", ["@repo/api"])).toEqual([
+    "exec",
+    "turbo",
+    "run",
+    "test",
+    "--only",
+    "--filter=@repo/api",
+  ]));

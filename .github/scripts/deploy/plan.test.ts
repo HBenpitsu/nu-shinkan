@@ -17,11 +17,12 @@ function deps() {
     list: vi.fn((filters?: string[]) =>
       !filters ? all : filters[0]?.startsWith("...") ? all : [api],
     ),
+    resolveWorkers: vi.fn((packages: typeof all) => packages),
     reviewTargets: vi.fn(() => all),
   };
 }
 it("separates direct changes from dependents", () =>
-  expect(plan(request, deps())).toEqual({ changes: [api], targets: all }));
+  expect(plan(request, deps())).toEqual({ changes: ["api"], targets: all }));
 it.each(["missing", "compare", "rewind"])(
   "falls back to full for %s",
   (mode) => {
@@ -37,7 +38,7 @@ it.each(["missing", "compare", "rewind"])(
         { ...request, base: mode === "missing" ? undefined : request.base },
         d,
       ),
-    ).toEqual({ changes: all, targets: all });
+    ).toEqual({ changes: ["api", "web"], targets: all });
   },
 );
 it("does not turn empty successful comparison into full", () => {
@@ -60,11 +61,30 @@ it("manual picks test only named packages and expand graph through dependents", 
       { ...request, channel: "preview", source: "manual-pick", picks: ["api"] },
       d,
     ),
-  ).toEqual({ changes: [api], targets: all });
+  ).toEqual({ changes: ["api"], targets: all });
   expect(d.list).toHaveBeenLastCalledWith(["...api"]);
 });
 it("full includes every workspace including templates", () =>
   expect(plan({ ...request, source: "full" }, deps())).toEqual({
-    changes: all,
+    changes: ["api", "web"],
     targets: all,
   }));
+
+it("adds Worker metadata to planned targets", () => {
+  const d = deps();
+  d.resolveWorkers.mockReturnValue([
+    { ...api, workerName: "bare-api" } as typeof api,
+  ]);
+  expect(plan(request, d)).toEqual({
+    changes: ["api"],
+    targets: [{ ...api, workerName: "bare-api" }],
+  });
+  expect(d.resolveWorkers).toHaveBeenCalledWith(all);
+});
+it("does not turn Worker metadata failures into full fallback", () => {
+  const d = deps();
+  d.resolveWorkers.mockImplementation(() => {
+    throw new Error("invalid Worker");
+  });
+  expect(() => plan(request, d)).toThrow("invalid Worker");
+});

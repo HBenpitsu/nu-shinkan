@@ -15,10 +15,11 @@ it("preserves URL path/query and leaves connections outside targets unchanged", 
       overrides: {},
     },
     parseContext({
-      WORKER_NAMES: JSON.stringify({ api: "api" }),
       DEPLOY_CHANNEL: "preview",
       PR_NUMBER: "8",
-      TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
+      TARGETS: JSON.stringify([
+        { package: "api", path: "apps/api", workerName: "api" },
+      ]),
     }),
   );
   expect(result.API).toBe(
@@ -35,10 +36,11 @@ it("rejects a selected URL connection without a base URL", () =>
         overrides: {},
       },
       parseContext({
-        WORKER_NAMES: JSON.stringify({ api: "api" }),
         DEPLOY_CHANNEL: "preview",
         PR_NUMBER: "8",
-        TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
+        TARGETS: JSON.stringify([
+          { package: "api", path: "apps/api", workerName: "api" },
+        ]),
       }),
     ),
   ).toThrow("Missing base URL"));

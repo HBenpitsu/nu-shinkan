@@ -67,3 +67,25 @@ export function isAncestor(base: string, head: string): boolean {
     return false;
   }
 }
+
+export type DeployTarget = Package & { workerName?: string };
+
+export function resolveWorkers(packages: Package[]): DeployTarget[] {
+  if (!packages.length) return [];
+  const workers: Record<string, string> = JSON.parse(
+    execFileSync(
+      "pnpm",
+      ["exec", "tsx", "scripts/workspace/resolve-workers.ts"],
+      {
+        input: JSON.stringify(packages),
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "inherit"],
+      },
+    ),
+  );
+  return packages.map((pkg) =>
+    Object.hasOwn(workers, pkg.package)
+      ? { ...pkg, workerName: workers[pkg.package] }
+      : { ...pkg },
+  );
+}

@@ -39,7 +39,7 @@
         "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml"
       ],
       "outputs": ["wrangler.deploy.jsonc", ".env.deploy", "dist/**"],
-      "env": ["DEPLOY_CHANNEL", "PR_NUMBER", "TARGETS", "WORKER_NAMES"]
+      "env": ["DEPLOY_CHANNEL", "PR_NUMBER", "TARGETS"]
     },
     "sync:local": {
       "cache": false

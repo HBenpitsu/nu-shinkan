@@ -1,4 +1,4 @@
-import type { Package } from "./workspace.js";
+import type { Package, DeployTarget } from "./workspace.js";
 export type Result = Package & {
   status: "success" | "unnecessary" | "failure";
   worker?: string;
@@ -45,8 +45,8 @@ export type Report = {
   base?: string;
   channel: string;
   phase: string;
-  changes: Package[];
-  targets: Package[];
+  changes: string[];
+  targets: DeployTarget[];
   results: Result[];
   error?: string;
   notificationError?: string;

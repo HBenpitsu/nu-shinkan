@@ -14,10 +14,11 @@ const settings: Settings = {
   overrides: { ENV: "deployment" },
 };
 const context = parseContext({
-  WORKER_NAMES: JSON.stringify({ "@repo/api": "api" }),
   DEPLOY_CHANNEL: "preview",
   PR_NUMBER: "42",
-  TARGETS: JSON.stringify([{ package: "@repo/api", path: "apps/api" }]),
+  TARGETS: JSON.stringify([
+    { package: "@repo/api", path: "apps/api", workerName: "api" },
+  ]),
 });
 
 describe("Wrangler materialize", () => {

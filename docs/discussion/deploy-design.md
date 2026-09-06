@@ -83,17 +83,19 @@ purpose が `review` の場合は，同じ PR の実行中の要求をキャン�
 
 対象 SHA を checkout し，そのコミットのパッケージと設定を使って計画します．selection source が `diff` の場合は比較に必要な履歴を取得し，`full`・`manual-pick` では対象コミットのみを取得します．
 
-出力は，次の形式の JSON として `GITHUB_OUTPUT` に書き込みます．各要素はパッケージ名とパッケージへのパスを持ちます．
+出力は，次の形式の JSON として `GITHUB_OUTPUT` に書き込みます．`changes` はパッケージ名の配列，`targets` はパッケージ名・パス・任意のWorker基底名を持つ配列です．
 
 ```json
 {
-  "changes": [{ "package": "@repo/example-api", "path": "apps/example-api" }],
+  "changes": ["@repo/example-api"],
   "targets": [
-    { "package": "@repo/example-api", "path": "apps/example-api" },
-    { "package": "@repo/example-web", "path": "apps/example-web" }
+    { "package": "@repo/example-api", "path": "apps/example-api", "workerName": "example-api" },
+    { "package": "@repo/example-web", "path": "apps/example-web", "workerName": "example-web" }
   ]
 }
 ```
+
+`workerName` は対象コミットの `wrangler.jsonc` の `name` を計画時に収集した値で、channelのサフィックスを含みません。Worker設定のない候補では省略します。後続にはこの配列を `TARGETS` として渡し、Worker名の再収集や別環境変数による受け渡しは行いません。
 
 `changes` はテスト対象，`targets` はデプロイ候補です．どちらにも `scripts.test`や`scripts.deploy` のないパッケージが含まれ得ます．計画時にはこれを除外せず，実行時にテスト・デプロイをスキップします．
 

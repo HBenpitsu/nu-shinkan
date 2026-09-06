@@ -1,6 +1,5 @@
 export type DeployChannel = "staging" | "release" | "preview";
 export type Target = { path: string; workerName?: string };
-type TargetInput = { package: string; path: string };
 export type Context = {
   channel: DeployChannel;
   prNumber: number;
@@ -13,10 +12,7 @@ export type Context = {
 export function parseContext(env: NodeJS.ProcessEnv = process.env): Context {
   const channel = parseChannel(env.DEPLOY_CHANNEL);
   const prNumber = parsePrNumber(env.PR_NUMBER, channel);
-  const targets = mergeTargets(
-    parseTargets(env.TARGETS),
-    parseWorkerNames(env.WORKER_NAMES),
-  );
+  const targets = parseTargets(env.TARGETS);
   const profile = resolveProfile(channel);
 
   return { channel, profile, prNumber, targets };
@@ -44,21 +40,9 @@ function parsePrNumber(
   return prNumber;
 }
 
-function mergeTargets(
-  targets: TargetInput[],
-  workers: ReadonlyMap<string, string>,
-): ReadonlyMap<string, Target> {
-  // Worker名のない共有パッケージも対象として保持する。対象外のWorkerは取り込まない。
-  return new Map(
-    targets.map(({ package: name, path }) => {
-      const workerName = workers.get(name);
-      return [name, workerName === undefined ? { path } : { path, workerName }];
-    }),
-  );
-}
-
-function parseTargets(value: string | undefined): TargetInput[] {
-  if (!value) throw new Error("TARGETS is required as JSON [{package,path}]");
+function parseTargets(value: string | undefined): ReadonlyMap<string, Target> {
+  if (!value)
+    throw new Error("TARGETS is required as JSON [{package,path,workerName?}]");
   const targets: unknown = JSON.parse(value);
   if (
     !Array.isArray(targets) ||
@@ -69,26 +53,21 @@ function parseTargets(value: string | undefined): TargetInput[] {
         !t.package ||
         typeof t.path !== "string" ||
         !t.path ||
+        (t.workerName !== undefined &&
+          (typeof t.workerName !== "string" || !t.workerName)) ||
         /(^|[\\/])\.\.([\\/]|$)|^[\\/]/.test(t.path),
     )
   )
-    throw new Error("Invalid TARGETS; expected [{package,path}]");
-  return targets;
-}
-
-function parseWorkerNames(value: string | undefined): Map<string, string> {
-  // 接続先の情報はリポジトリ側で収集済み。他パッケージのファイルは探索しない。
-  const raw: unknown = JSON.parse(value ?? "{}");
-  if (
-    !raw ||
-    typeof raw !== "object" ||
-    Array.isArray(raw) ||
-    Object.values(raw).some((name) => typeof name !== "string" || !name)
-  )
-    throw new Error(
-      "Invalid WORKER_NAMES; expected package-to-Worker-name JSON object",
-    );
-  return new Map(Object.entries(raw) as [string, string][]);
+    throw new Error("Invalid TARGETS; expected [{package,path,workerName?}]");
+  const names = targets.map((target) => target.package);
+  if (new Set(names).size !== names.length)
+    throw new Error("Duplicate TARGETS package");
+  return new Map(
+    targets.map(({ package: name, path, workerName }) => [
+      name,
+      workerName === undefined ? { path } : { path, workerName },
+    ]),
+  );
 }
 
 function resolveProfile(channel: DeployChannel): Context["profile"] {

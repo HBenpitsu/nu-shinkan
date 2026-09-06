@@ -80,16 +80,10 @@ try {
       report.phase = "build";
       save();
       parseContext(env);
-      env.WORKER_NAMES = execFileSync(
-        "pnpm",
-        ["exec", "tsx", "scripts/deploy-context/build.ts"],
-        {
-          input: JSON.stringify(report.targets),
-          encoding: "utf8",
-          stdio: ["pipe", "pipe", "inherit"],
-        },
-      ).trim();
-      runTask("build", report.targets);
+      runTask(
+        "build",
+        report.targets.map((p) => p.package),
+      );
       break;
     case "deploy": {
       if (

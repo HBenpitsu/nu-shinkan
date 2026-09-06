@@ -42,12 +42,13 @@ describe("deployment context", () => {
     }));
 });
 
-it("parses Worker names from the supplied environment", () => {
+it("parses Worker names included in TARGETS", () => {
   const context = parseContext({
     DEPLOY_CHANNEL: "preview",
     PR_NUMBER: "42",
-    TARGETS: JSON.stringify([{ package: "api", path: "apps/api" }]),
-    WORKER_NAMES: '{"api":"bare-api"}',
+    TARGETS: JSON.stringify([
+      { package: "api", path: "apps/api", workerName: "bare-api" },
+    ]),
   });
   expect(context.targets.get("api")).toEqual({
     path: "apps/api",
@@ -55,23 +56,28 @@ it("parses Worker names from the supplied environment", () => {
   });
 });
 
-it.each([
-  "null",
-  "[]",
-  '{"api":42}',
-  '{"api":""}',
-  '{"api":null}',
-  "true",
-  "invalid JSON",
-])("rejects invalid Worker metadata %s", (value) => {
+it.each([null, [], 42, "", true, {}])(
+  "rejects invalid target Worker name %j",
+  (workerName) => {
+    expect(() =>
+      parseContext({
+        DEPLOY_CHANNEL: "preview",
+        PR_NUMBER: "1",
+        TARGETS: JSON.stringify([
+          { package: "api", path: "apps/api", workerName },
+        ]),
+      }),
+    ).toThrow("Invalid TARGETS");
+  },
+);
+it("rejects duplicate target names", () => {
+  const target = { package: "api", path: "apps/api" };
   expect(() =>
     parseContext({
-      DEPLOY_CHANNEL: "preview",
-      PR_NUMBER: "1",
-      TARGETS: "[]",
-      WORKER_NAMES: value,
+      DEPLOY_CHANNEL: "staging",
+      TARGETS: JSON.stringify([target, target]),
     }),
-  ).toThrow();
+  ).toThrow("Duplicate TARGETS");
 });
 
 it.each([
@@ -84,11 +90,10 @@ it.each([
   ).toMatchObject({ profile });
 });
 
-it("keeps non-Worker targets and excludes unselected Worker metadata", () => {
+it("keeps non-Worker targets", () => {
   const context = parseContext({
     DEPLOY_CHANNEL: "staging",
     TARGETS: JSON.stringify([{ package: "library", path: "packages/library" }]),
-    WORKER_NAMES: JSON.stringify({ other: "other-worker" }),
   });
   expect([...context.targets]).toEqual([
     ["library", { path: "packages/library" }],
