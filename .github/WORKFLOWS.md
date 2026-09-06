@@ -36,16 +36,20 @@ trigger workflowは，git上の操作やスケジュールに応じて自動で�
 
 CI/CDアクションのオーケストレーションを行うworkflowもしくはactionです
 
+| workflow file | 処理 |
+| (actions) update-deploy | ビルド，デプロイ |
+| (actions) full-deploy | ビルド，デプロイ |
+| (actions) review-deploy | ビルド，デプロイ |
+| (actions) pick-deploy | ビルド，デプロイ |
+| (actions) ui-test | テスト (ui) |
+| (actions) vi-test | テスト (vitest) |
 
 
 ### 共通化処理
 
 pnpmのセットアップなど，複数のworkflowに共通する処理はreusable workflowもしくはcomposit actionとして抽出サれています．
 
-- actions
-    - setup
-    - comment-reaction: コメントに開始時 🚀、ジョブ成功時 🎉、失敗時 😕 を付与する。
-      checkout 後、対象処理の前に呼び出し、`token: ${{ github.token }}` を渡す。
-      `pull-requests: write` が必要。内部の JavaScript action の `post-if` でジョブの結果を判定する。
-      キャンセル時のリアクションは追加しない。post はジョブ終了時に逆順で実行されるため、
-      判定はリアクションの post 実行時点の状態となる。最初の checkout 自体の失敗は対象外。
+| workflow file | 処理 |
+| (actions) comment-reaction | トリガーとなったコメントにリアクションをつける |
+| (actions) use-app | Github App のクレデンシャルでリポジトリをCheckoutする |
+| (actions) use-repo | リポジトリの依存関係を解決する |

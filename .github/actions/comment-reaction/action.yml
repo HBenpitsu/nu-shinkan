@@ -4,12 +4,12 @@ inputs:
   token:
     description: Token with permission to write PR comment reactions
     required: true
+  job-status:
+    description: Job status evaluated when the action runs
+    # The runner evaluates this default again when running post.
+    default: ${{ job.status }}
 runs:
-  using: composite
-  steps:
-    - uses: ./.github/actions/comment-reaction/failure
-      with:
-        token: ${{ inputs.token }}
-    - uses: ./.github/actions/comment-reaction/success
-      with:
-        token: ${{ inputs.token }}
+  using: node24
+  main: main.mjs
+  post: post.mjs
+  post-if: "!cancelled()"

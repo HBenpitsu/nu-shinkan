@@ -1,4 +1,4 @@
-name: Deploy Preview By PR
+name: On Pull Request to main branch
 on:
   pull_request:
     branches: [main]

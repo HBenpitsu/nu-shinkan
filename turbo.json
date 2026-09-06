@@ -26,6 +26,12 @@
         "^ui_test"
       ]
     },
+    "ui_test:prepare": {
+      "cache": false,
+      "dependsOn": [
+        "^ui_test:prepare"
+      ]
+    },
     "env:sync": {
       "dependsOn": [
         "^env:sync"

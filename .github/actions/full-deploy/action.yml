@@ -1,0 +1,30 @@
+name: Full Deploy
+description: | 
+  Prepare deploy artifacts, and deploy all of the packages to the target environment. 
+
+inputs:
+  profile:
+    description: Deployment profile to use for this deployment
+    required: true
+    choices:
+      - staging
+      - release
+
+runs:
+  using: composite
+  steps:
+    - name: Setup
+      uses: ./.github/actions/use-repo
+      with:
+        context: ${{ github.sha }}
+
+    - name: Deploy
+      shell: bash
+      env:
+        DEPLOY_CHANNEL: ${{ inputs.profile }}
+      run: |
+        set -euo pipefail
+
+        pnpm install --frozen-lockfile --prefer-offline
+        pnpm build --force
+        pnpm deploy --force

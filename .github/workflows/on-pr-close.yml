@@ -1,4 +1,4 @@
-name: Clean preview
+name: On Pull Request Closed
 on:
   pull_request:
     branches: [main]

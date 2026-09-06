@@ -22,11 +22,13 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # Put reaction early
       - name: Track comment reaction
         uses: ./.github/actions/comment-reaction
         with:
           token: ${{ github.token }}
 
+      # The main flow begins here
       - name: Use GitHub App
         uses: ./.github/actions/use-app
         with:

@@ -1,4 +1,4 @@
-name: Receive preview command
+name: On Comment to Pull Request
 on:
   issue_comment:
     types: [created]
