@@ -55,3 +55,15 @@ Check the following and revise any item that fails:
 - Does the structure follow the reader's needs rather than the chronology of the conversation?
 - Are final decisions, proposals, and unresolved questions clearly distinguished where applicable?
 - Have edits been integrated without leaving contradictory or outdated statements?
+
+# The Rule Of Document Amending
+
+## ADR
+
+You MUST NOT amend existing content of `ADR/*` documents.
+When you revise it, append the content.
+EXCEPTION: When user requested to merge amending, you can edit existing content.
+
+## Whole
+
+Remember the **Document Fences**
