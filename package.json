@@ -13,7 +13,7 @@
     "make:backend": "tsx ./scripts/make-app/make-backend-app.ts",
     "make:frontend": "tsx ./scripts/make-app/make-frontend-app.ts",
     "prepare": "husky install",
-    "sync": "tsx scripts/sync-local/cli.ts"
+    "sync": "tsx scripts/sync-local/sync.ts"
   },
   "devDependencies": {
     "@types/node": "26.3.0",
