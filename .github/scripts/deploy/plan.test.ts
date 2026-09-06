@@ -1,5 +1,4 @@
 import { expect, it, vi } from "vitest";
-import { parseDeployment } from "@repo/app-config/deployment";
 import { plan, type Request } from "./plan.js";
 const api = { package: "api", path: "apps/api" },
   web = { package: "web", path: "apps/web" };
@@ -18,13 +17,7 @@ function deps() {
     list: vi.fn((filters?: string[]) =>
       !filters ? all : filters[0]?.startsWith("...") ? all : [api],
     ),
-    readDeployment: vi.fn((path) =>
-      parseDeployment(
-        path === web.path
-          ? { reviewEntry: true, connections: { urls: { API: "api" } } }
-          : {},
-      ),
-    ),
+    reviewTargets: vi.fn(() => all),
   };
 }
 it("separates direct changes from dependents", () =>

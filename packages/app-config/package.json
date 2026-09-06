@@ -12,7 +12,6 @@
   },
   "bin": {
     "materialize": "./bin/materialize.js",
-    "sync": "./bin/sync-local.js",
     "app-build": "./bin/build.js"
   },
   "devDependencies": {
@@ -27,7 +26,8 @@
   },
   "exports": {
     "./deployment": "./bin/config-file/deployment.yaml.js",
-    "./workspace": "./bin/workspace.js",
-    "./context": "./bin/materialize/context.js"
+    "./context": "./bin/materialize/context.js",
+    "./sync-local": "./bin/sync-local.js",
+    "./global": "./bin/config-file/globalRuntimeEnvs.yaml.js"
   }
 }

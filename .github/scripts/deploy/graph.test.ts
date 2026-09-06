@@ -1,44 +1,30 @@
-import { expect, it } from "vitest";
-import { parseDeployment } from "@repo/app-config/deployment";
+import { expect, it, vi } from "vitest";
+import { execFileSync } from "node:child_process";
 import { reviewTargets } from "./graph.js";
-const packages = ["api", "a", "b", "web", "batch", "orphan"].map(
-  (packageName) => ({ package: packageName, path: `apps/${packageName}` }),
-);
-function configs() {
-  return new Map([
+vi.mock("node:child_process", () => ({ execFileSync: vi.fn() }));
+it("passes build JSON to select and returns its targets", () => {
+  const target = { package: "api", path: "apps/api" };
+  vi.mocked(execFileSync)
+    .mockReturnValueOnce('{"graph":true}')
+    .mockReturnValueOnce(JSON.stringify([target]));
+  expect(reviewTargets([target])).toEqual([target]);
+  expect(execFileSync).toHaveBeenLastCalledWith(
+    "pnpm",
     [
+      "exec",
+      "tsx",
+      "scripts/connection-graph/select.ts",
+      "--graph",
+      "-",
+      "--",
       "api",
-      parseDeployment({
-        connections: { urls: { SELF: "api", UNKNOWN: "unknown" } },
-      }),
     ],
-    ["a", parseDeployment({ connections: { urls: { API: "api", B: "b" } } })],
-    ["b", parseDeployment({ connections: { bindings: { A: "a" } } })],
-    [
-      "web",
-      parseDeployment({
-        reviewEntry: true,
-        connections: { bindings: { A: "a" } },
-      }),
-    ],
-    ["batch", parseDeployment({ connections: { urls: { API: "api" } } })],
-  ]);
-}
-it("selects all paths including cycles but excludes branches without entries", () =>
-  expect(
-    reviewTargets(packages, configs(), [packages[0]!]).map((p) => p.package),
-  ).toEqual(["api", "a", "b", "web"]));
-it("includes zero-length paths", () =>
-  expect(reviewTargets(packages, configs(), [packages[3]!])).toEqual([
-    packages[3],
-  ]));
-it("handles empty starts and entry-less graphs", () => {
-  expect(reviewTargets(packages, configs(), [])).toEqual([]);
-  expect(reviewTargets(packages, new Map(), packages)).toEqual([]);
+    expect.objectContaining({ input: '{"graph":true}' }),
+  );
 });
-it("handles multiple roots and disconnected roots", () =>
-  expect(
-    reviewTargets(packages, configs(), [packages[0]!, packages[5]!]).map(
-      (p) => p.package,
-    ),
-  ).toEqual(["api", "a", "b", "web"]));
+it("propagates CLI failures", () => {
+  vi.mocked(execFileSync).mockImplementationOnce(() => {
+    throw new Error("build failed");
+  });
+  expect(() => reviewTargets([])).toThrow("build failed");
+});

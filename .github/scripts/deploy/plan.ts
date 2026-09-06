@@ -1,4 +1,3 @@
-import { readDeployment } from "@repo/app-config/deployment";
 import {
   commit,
   isAncestor,
@@ -17,7 +16,7 @@ export type Request = {
 export type Plan = { changes: Package[]; targets: Package[] };
 export function plan(
   request: Request,
-  deps = { list, commit, isAncestor, readDeployment },
+  deps = { list, commit, isAncestor, reviewTargets },
 ): Plan {
   const { channel, source, head, base, picks } = request;
   if (
@@ -47,13 +46,6 @@ export function plan(
       return { changes: all, targets: all };
     }
   }
-  const targets =
-    channel === "preview"
-      ? reviewTargets(
-          all,
-          new Map(all.map((p) => [p.package, deps.readDeployment(p.path)])),
-          starts,
-        )
-      : starts;
+  const targets = channel === "preview" ? deps.reviewTargets(starts) : starts;
   return { changes, targets };
 }

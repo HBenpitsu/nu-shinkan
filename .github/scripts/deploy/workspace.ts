@@ -1,7 +1,13 @@
 import { execFileSync } from "node:child_process";
-import { workspacePackages } from "@repo/app-config/workspace";
 export type Package = { package: string; path: string };
-export { workspacePackages };
+export function workspacePackages(): Package[] {
+  return JSON.parse(
+    execFileSync("pnpm", ["exec", "tsx", "scripts/workspace/list.ts"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "inherit"],
+    }),
+  );
+}
 export function normalizeWorkspace(value: unknown): Package[] {
   const items = (value as { packages?: { items?: unknown } })?.packages?.items;
   if (!Array.isArray(items)) throw new Error("Invalid turbo ls output");

@@ -1,10 +1,12 @@
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { buildWorkspaceConnectionGraph } from "./graph.js";
-
+import { collectWorkerNames } from "./workers.js";
 try {
   const { values } = parseArgs({ options: { root: { type: "string" } } });
   console.log(
-    JSON.stringify(buildWorkspaceConnectionGraph(values.root), null, 2),
+    JSON.stringify(
+      collectWorkerNames(JSON.parse(readFileSync(0, "utf8")), values.root),
+    ),
   );
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

@@ -13,6 +13,7 @@ import { materializeWrangler } from "./wrangler.js";
 const roots: string[] = [];
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   for (const root of roots) rmSync(root, { recursive: true, force: true });
   roots.length = 0;
 });
@@ -23,7 +24,7 @@ it.each(["staging", "release", "preview"] as const)(
     roots.push(root);
     const app = join(root, "apps/api");
     mkdirSync(app, { recursive: true });
-    writeFileSync(join(root, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n");
+    vi.stubEnv("WORKER_NAMES", JSON.stringify({ api: "bare-api" }));
     writeFileSync(join(app, "package.json"), JSON.stringify({ name: "api" }));
     writeFileSync(
       join(app, "wrangler.jsonc"),
@@ -57,5 +58,15 @@ it.each(["staging", "release", "preview"] as const)(
         ? "https://bare-api-preview-pr-42.nushinkan2.workers.dev/api/"
         : `https://bare-api-${channel}.example/api/`,
     );
+  },
+);
+
+it.each(["null", "[]", '{"api":42}', '{"api":""}'])(
+  "rejects invalid Worker metadata %s",
+  (value) => {
+    vi.stubEnv("WORKER_NAMES", value);
+    expect(() =>
+      readSettings({ channel: "preview", prNumber: 1, targets: [] }),
+    ).toThrow("Invalid WORKER_NAMES");
   },
 );

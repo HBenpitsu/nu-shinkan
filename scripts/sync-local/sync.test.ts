@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it } from "vitest";
 import {
   mkdtempSync,
   mkdirSync,
@@ -9,17 +9,8 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { parse } from "jsonc-parser";
-const state = vi.hoisted(() => ({
-  file: new URL("file:///tmp/unused"),
-  local: { KEEP: "new", OLD: null } as Record<string, string | null>,
-}));
-vi.mock("./config-file/globalRuntimeEnvs.yaml.js", () => ({
-  get globalFile() {
-    return state.file;
-  },
-  readGlobalRuntimeEnvs: () => ({ local: state.local }),
-}));
-import { syncLocal } from "./sync-local.js";
+import { syncLocal } from "./sync.js";
+const state = { file: new URL("file:///tmp/unused") };
 const roots: string[] = [];
 afterEach(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
@@ -48,7 +39,7 @@ function fixture() {
 }
 it("removes tombstones from all native files before consuming them", () => {
   const root = fixture();
-  syncLocal(root);
+  syncLocal(root, false, state.file);
   for (const name of ["a", "b"]) {
     const dir = join(root, "apps", name);
     const env = readFileSync(join(dir, ".env.development"), "utf8");
@@ -63,7 +54,7 @@ it("removes tombstones from all native files before consuming them", () => {
 });
 it("dry-run leaves native files and tombstones intact", () => {
   const root = fixture();
-  syncLocal(root, true);
+  syncLocal(root, true, state.file);
   expect(readFileSync(join(root, "apps/a/.env.development"), "utf8")).toContain(
     "VITE_OLD=old",
   );
@@ -73,6 +64,6 @@ it("retains tombstones if any native write fails", () => {
   const root = fixture();
   rmSync(join(root, "apps/b/.env.development"));
   mkdirSync(join(root, "apps/b/.env.development"));
-  expect(() => syncLocal(root)).toThrow();
+  expect(() => syncLocal(root, false, state.file)).toThrow();
   expect(readFileSync(state.file, "utf8")).toContain("OLD");
 });

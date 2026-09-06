@@ -1,11 +1,8 @@
 import { parseArgs } from "node:util";
-import { buildWorkspaceConnectionGraph } from "./graph.js";
-
+import { workspacePackages } from "./workspace.js";
 try {
   const { values } = parseArgs({ options: { root: { type: "string" } } });
-  console.log(
-    JSON.stringify(buildWorkspaceConnectionGraph(values.root), null, 2),
-  );
+  console.log(JSON.stringify(workspacePackages(values.root)));
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

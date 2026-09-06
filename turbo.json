@@ -3,39 +3,27 @@
   "ui": "tui",
   "tasks": {
     "lint": {
-      "dependsOn": [
-        "^lint"
-      ]
+      "dependsOn": ["^lint"]
     },
     "check-types": {
-      "dependsOn": [
-        "^check-types"
-      ]
+      "dependsOn": ["^check-types"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "test": {
-      "dependsOn": [
-        "^test"
-      ]
+      "dependsOn": ["^test"]
     },
     "ui_test": {
-      "dependsOn": [
-        "^ui_test"
-      ]
+      "dependsOn": ["^ui_test"]
     },
     "ui_test:prepare": {
       "cache": false,
-      "dependsOn": [
-        "^ui_test:prepare"
-      ]
+      "dependsOn": ["^ui_test:prepare"]
     },
     "env:sync": {
-      "dependsOn": [
-        "^env:sync"
-      ]
+      "dependsOn": ["^env:sync"]
     },
     "deploy": {
       "cache": false,
@@ -51,21 +39,10 @@
       "cache": false,
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml",
-        "$TURBO_ROOT$/apps/*/deployment.yaml",
-        "$TURBO_ROOT$/templates/*/deployment.yaml",
-        "$TURBO_ROOT$/apps/*/wrangler.jsonc",
-        "$TURBO_ROOT$/templates/*/wrangler.jsonc"
+        "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml"
       ],
-      "outputs": [
-        ".generated/**",
-        "dist/**"
-      ],
-      "env": [
-        "DEPLOY_CHANNEL",
-        "PR_NUMBER",
-        "TARGETS"
-      ]
+      "outputs": [".generated/**", "dist/**"],
+      "env": ["DEPLOY_CHANNEL", "PR_NUMBER", "TARGETS", "WORKER_NAMES"]
     }
   }
 }
