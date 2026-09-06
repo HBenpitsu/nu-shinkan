@@ -1,0 +1,15 @@
+name: Comment reaction
+description: React when processing starts and after the job succeeds or fails.
+inputs:
+  token:
+    description: Token with permission to write PR comment reactions
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/comment-reaction/failure
+      with:
+        token: ${{ inputs.token }}
+    - uses: ./.github/actions/comment-reaction/success
+      with:
+        token: ${{ inputs.token }}

@@ -6,10 +6,10 @@ Apply these instructions when creating or editing documentation. The goal is to 
 
 Choose the document type based on its intended audience and use, not its title or file format.
 
-| Type | Intended use | Examples |
-| --- | --- | --- |
-| Discussion document | Help participants in the current conversation review progress, discuss options, or decide what to do next. | Status summaries, proposed implementation plans, work reports, discussion records. |
-| Reference document | Help readers understand or perform something without access to the current conversation. | Tool and command guides, onboarding materials, design documents, operational procedures. |
+| Type                | Intended use                                                                                               | Examples                                                                                 |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Discussion document | Help participants in the current conversation review progress, discuss options, or decide what to do next. | Status summaries, proposed implementation plans, work reports, discussion records.       |
+| Reference document  | Help readers understand or perform something without access to the current conversation.                   | Tool and command guides, onboarding materials, design documents, operational procedures. |
 
 - If the document is intended for future readers or serves both purposes, apply the reference-document rules below.
 - When editing an existing document, preserve its intended purpose and organize additions accordingly.

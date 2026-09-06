@@ -1,68 +1,121 @@
 name: Deploy Preview By PR
-
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Internal request PR number
+        required: true
+        type: string
+      head_sha:
+        description: Head SHA fixed by comment receiver
+        required: true
+        type: string
+      base_sha:
+        description: Base SHA fixed by comment receiver
+        required: true
+        type: string
+      picks:
+        description: JSON array of exact package names
+        required: true
+        type: string
 concurrency:
-  group: deploy-preview-pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
+  group: preview-pr-${{ github.event.pull_request.number || inputs.pr_number }}
+  queue: single
+  cancel-in-progress: false
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
 jobs:
-  detect:
-    uses: ./.github/workflows/affected-detection.yml
-    with:
-      base_sha: ${{ github.event.pull_request.base.sha }}
-      head_sha: ${{ github.event.pull_request.head.sha }}
-      cache_channel: ${{ github.ref_name }}
-  heavy-tests:
-    needs: detect
-    uses: ./.github/workflows/heavy-tests.yml
-    with:
-      affected: ${{ fromJSON(needs.detect.outputs.apps_affected) }}
-      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
-  light-tests:
-    needs: detect
-    uses: ./.github/workflows/light-tests.yml
-    with:
-      affected: ${{ fromJSON(needs.detect.outputs.affected) }}
-      filter_args: ${{ needs.detect.outputs.affected_filter_args }}
-  e2e-report:
-    needs: heavy-tests
-    permissions:
-      actions: read
-      pull-requests: write
-    uses: ./.github/workflows/e2e-report.yml
-  deploy-preview:
-    needs: 
-      - heavy-tests
-      - light-tests
-      - detect
-    name: Deploy preview for affected apps
+  preview:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    environment: ${{ github.ref_name }}
+    environment: preview
+    outputs:
+      changes: ${{ steps.deploy.outputs.changes }}
     env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
+      SELECTION_SOURCE: ${{ github.event_name == 'workflow_dispatch' && 'manual-pick' || 'diff' }}
+      PICKS: ${{ inputs.picks || '[]' }}
+      DEPLOY_CHANNEL: preview
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Checkout
+      - id: checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-
-      - name: Common Setup
-        uses: ./.github/actions/setup
+          ref: ${{ env.HEAD_SHA }}
+          fetch-depth: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+      - uses: actions/setup-node@v4
         with:
-          deploy_channel: ${{ github.ref_name }}
-          turbo_cache: 'update'
-
-      - name: Preview Deploy for affected apps
+          node-version: "24"
+      - id: early
+        name: Check current PR state and manual input before install
+        run: node .github/scripts/deploy/early.mjs
+      - id: deploy
+        if: ${{ steps.early.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/deploy
+        with:
+          channel: preview
+          head_sha: ${{ env.HEAD_SHA }}
+          base_sha: ${{ env.BASE_SHA }}
+          selection_source: ${{ env.SELECTION_SOURCE }}
+          pr_number: ${{ env.PR_NUMBER }}
+          picks: ${{ env.PICKS }}
+      - name: Clean closed PR
+        if: ${{ steps.early.outputs.operation == 'cleanup' }}
+        run: node .github/scripts/deploy/cleanup-run.mjs
+      - name: Notify
+        if: ${{ always() && steps.early.outcome == 'success' }}
         env:
-          FILTERS: ${{ needs.detect.outputs.apps_filter_args }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          DEPLOY_CHANNEL: preview
-        id: previews
-        run: pnpm turbo run deploy --only $FILTERS
+          JOB_STATUS: ${{ job.status }}
+        run: node .github/scripts/deploy/notify-run.mjs
+      - name: Report failure before the early input step
+        if: ${{ always() && steps.early.outcome == 'skipped' }}
+        uses: actions/github-script@v7
+        env:
+          FAILED_PHASE: ${{ steps.checkout.outcome == 'failure' && 'checkout' || 'setup' }}
+        with:
+          script: |
+            const fs = require('node:fs');
+            const report = { repository: `${context.repo.owner}/${context.repo.repo}`, runId: String(context.runId), pr: Number(process.env.PR_NUMBER), head: process.env.HEAD_SHA || '', channel: 'preview', phase: process.env.FAILED_PHASE, error: 'Workflow failed before input validation; see Actions logs', changes: [], targets: [], results: [] };
+            try {
+              if (!Number.isSafeInteger(report.pr) || report.pr <= 0) throw Error('Invalid PR number');
+              await github.rest.issues.createComment({...context.repo, issue_number: report.pr, body: `Preview failed at ${report.phase}. SHA: ${report.head}\n\nhttps://github.com/${report.repository}/actions/runs/${report.runId}`});
+            } catch (error) { report.notificationError = String(error); core.setFailed(String(error)); }
+            fs.mkdirSync('.artifacts/deploy', {recursive: true});
+            fs.writeFileSync('.artifacts/deploy/result.json', JSON.stringify(report, null, 2));
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: deploy-result
+          path: .artifacts/deploy/
+  light-tests:
+    needs: preview
+    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
+    uses: ./.github/workflows/light-tests.yml
+    with:
+      affected: true
+      packages: ${{ needs.preview.outputs.changes }}
+      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+  heavy-tests:
+    needs: preview
+    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
+    uses: ./.github/workflows/heavy-tests.yml
+    with:
+      affected: true
+      packages: ${{ needs.preview.outputs.changes }}
+      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+  ui_test-report:
+    needs: heavy-tests
+    if: ${{ always() && needs.heavy-tests.result != 'skipped' }}
+    uses: ./.github/workflows/ui_test-report.yml
+    with:
+      pr_number: ${{ format('{0}', github.event.pull_request.number || inputs.pr_number) }}
+      head_sha: ${{ github.event.pull_request.head.sha || inputs.head_sha }}

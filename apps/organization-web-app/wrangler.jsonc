@@ -10,29 +10,16 @@
 		"global_fetch_strictly_public"
 	],
 	"assets": {
-		"directory": "./dist"
-	},
-	"env": {
-		"release": {
-			"services": [
-				{
-					"binding": "ORGANIZATION_USER_SERVICE",
-					"service": "organization-user-service"
-				}
-			]
-		},
-		"staging": {
-			"services": [
-				{
-					"binding": "ORGANIZATION_USER_SERVICE",
-					"service": "organization-user-service"
-				}
-			]
-		},
-		"preview": {}
-	},
+    "directory": "./dist"
+  },
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1
-	}
+  },
+  "services": [
+    {
+      "binding": "ORGANIZATION_USER_SERVICE",
+      "service": "organization-user-service"
+    }
+  ]
 }

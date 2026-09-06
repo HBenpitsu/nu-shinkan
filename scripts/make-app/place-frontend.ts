@@ -11,6 +11,22 @@ export function runPlaceFrontend(
 
   updatePackageJson(plan.targetDir, plan.appName, plan.port);
   updateWranglerConfig(plan.targetDir, plan.appName);
+  const envPath = join(plan.targetDir, ".env.development");
+  writeFileSync(
+    envPath,
+    readFileSync(envPath, "utf8").replace(
+      /^VITE_SELF=.*$/m,
+      `VITE_SELF=http://localhost:${plan.port}`,
+    ),
+  );
+  const deploymentPath = join(plan.targetDir, "deployment.yaml");
+  writeFileSync(
+    deploymentPath,
+    readFileSync(deploymentPath, "utf8").replaceAll(
+      "frontend-template",
+      plan.appName,
+    ),
+  );
 
   return plan;
 }

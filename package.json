@@ -4,15 +4,16 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "env:sync": "turbo run env:sync",
+    "env:sync": "pnpm sync",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "e2e": "turbo run e2e",
+    "ui_test": "turbo run ui_test",
     "make:backend": "tsx ./scripts/make-app/make-backend-app.ts",
     "make:frontend": "tsx ./scripts/make-app/make-frontend-app.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "sync": "pnpm --filter @repo/app-config exec node bin/sync-local.js"
   },
   "devDependencies": {
     "@types/node": "26.3.0",

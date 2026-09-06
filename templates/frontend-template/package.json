@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173 --mode development",
-    "predeploy": "materialize && tsc -b && vite build --mode deploy",
     "deploy": "wrangler deploy --config .generated/wrangler.jsonc --minify",
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview --mode development",
     "test": "vitest",
-    "e2e": "playwright test",
-    "e2e:report": "playwright show-report --host 0.0.0.0"
+    "ui_test": "playwright test",
+    "ui_test:report": "playwright show-report --host 0.0.0.0",
+    "build": "app-build"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.170.32",
@@ -21,7 +21,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@repo/env-config": "workspace:*",
+    "@repo/app-config": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@tanstack/router-plugin": "^1.168.35",

@@ -10,6 +10,7 @@ on:
         options:
           - staging
           - release
+        default: staging
       commit_sha:
         description: Full or short commit SHA to retag.
         required: true
@@ -26,38 +27,18 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Validate GitHub App credentials
-        shell: bash
-        env:
-          APP_ID: ${{ secrets.RETAG_APP_ID }}
-          APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${APP_ID}" ]]; then
-            echo "Missing required secret: APP_ID" >&2
-            exit 1
-          fi
-
-          if [[ -z "${APP_PRIVATE_KEY}" ]]; then
-            echo "Missing required secret: APP_PRIVATE_KEY" >&2
-            exit 1
-          fi
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.RETAG_APP_ID }}
-          private-key: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}
-
-      - name: Checkout
+      - name: Checkout workflow actions
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
+          sparse-checkout: /.github/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      
+      - name: Use GitHub App
+        uses: ./.github/actions/use-app
+        with:
+          APP_ID: ${{ secrets.RETAG_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
 
       - name: Move tag
         shell: bash

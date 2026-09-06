@@ -3,28 +3,63 @@
   "ui": "tui",
   "tasks": {
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": [
+        "^check-types"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "test": {
-      "dependsOn": ["^test"]
+      "dependsOn": [
+        "^test"
+      ]
     },
-    "e2e": {
-      "dependsOn": ["^e2e"]
+    "ui_test": {
+      "dependsOn": [
+        "^ui_test"
+      ]
     },
     "env:sync": {
-      "dependsOn": ["^env:sync"]
+      "dependsOn": [
+        "^env:sync"
+      ]
     },
     "deploy": {
       "cache": false,
-      "dependsOn": ["^env:sync", "^deploy"],
-      "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PR_NUMBER"]
+      "env": [
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "DEPLOY_CHANNEL",
+        "PR_NUMBER",
+        "TARGETS"
+      ]
+    },
+    "build": {
+      "cache": false,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml",
+        "$TURBO_ROOT$/apps/*/deployment.yaml",
+        "$TURBO_ROOT$/templates/*/deployment.yaml",
+        "$TURBO_ROOT$/apps/*/wrangler.jsonc",
+        "$TURBO_ROOT$/templates/*/wrangler.jsonc"
+      ],
+      "outputs": [
+        ".generated/**",
+        "dist/**"
+      ],
+      "env": [
+        "DEPLOY_CHANNEL",
+        "PR_NUMBER",
+        "TARGETS"
+      ]
     }
   }
 }

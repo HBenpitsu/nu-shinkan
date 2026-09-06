@@ -32,6 +32,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))
+      '@repo/app-config':
+        specifier: workspace:*
+        version: link:../../packages/app-config
       eslint:
         specifier: ^10.9.0
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -63,9 +66,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       eslint:
         specifier: ^10.9.0
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -109,9 +112,9 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       '@tanstack/router-plugin':
         specifier: ^1.168.35
         version: 1.168.35(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.2)(rolldown@1.2.7)(supports-color@10.2.2)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
@@ -176,9 +179,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       eslint:
         specifier: ^10.9.0
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -222,9 +225,9 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       '@tanstack/router-plugin':
         specifier: ^1.168.35
         version: 1.168.35(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.2)(rolldown@1.2.7)(supports-color@10.2.2)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))
@@ -277,7 +280,7 @@ importers:
         specifier: ^4.128.0
         version: 4.128.0(@cloudflare/workers-types@5.20260902.1)
 
-  packages/env-config:
+  packages/app-config:
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -406,9 +409,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.9.1(jiti@2.7.0)(supports-color@10.2.2))
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       eslint:
         specifier: ^10.9.0
         version: 10.9.1(jiti@2.7.0)(supports-color@10.2.2)
@@ -449,9 +452,9 @@ importers:
       '@playwright/test':
         specifier: ^1.62.1
         version: 1.62.1
-      '@repo/env-config':
+      '@repo/app-config':
         specifier: workspace:*
-        version: link:../../packages/env-config
+        version: link:../../packages/app-config
       '@tanstack/router-plugin':
         specifier: ^1.168.35
         version: 1.168.35(@tanstack/react-router@1.170.32(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(esbuild@0.28.2)(rolldown@1.2.7)(supports-color@10.2.2)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))

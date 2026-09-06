@@ -1,5 +1,3 @@
-PROBLEM: `@repo/env-config`は環境変数以外（wrangler.jsoncのserviceBinding）も取り扱うため，パッケージ名が若干ミスリーディング．
+# 設定パッケージの改名
 
-TODO: `@repo/app-config`に改名する．
-TODO: configuration-design.mdを修正
-TODO: deploy-design.mdを修正
+2026-09-06: `@repo/env-config` を `@repo/app-config` に改名し，利用側・設計文書・lockfile の参照を更新した．bin 名 `sync`・`materialize` は維持する．

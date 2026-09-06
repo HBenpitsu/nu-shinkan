@@ -7,14 +7,18 @@ on:
         description: Indicates if there are changes in the affected apps.
         required: true
         type: boolean
-      filter_args:
-        description: The filter option arguments for turbo command, it contains all of affected apps.
+      packages:
+        description: JSON package/path array from deployment plan
+        required: true
+        type: string
+      head_sha:
+        description: Fixed target SHA
         required: true
         type: string
 
 jobs:
-  e2e:
-    name: E2E
+  ui_test:
+    name: UI test
     if: ${{ inputs.affected }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -23,28 +27,28 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-        
+          ref: ${{ inputs.head_sha }}
+
       - name: Common Setup
         uses: ./.github/actions/setup
         with:
-          checkout: 'shallow'
-          cache_channel: 'test'
-          turbo_cache: 'update'
+          cache_channel: "test"
+          turbo_cache: "update"
 
       - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps
+        run: pnpm --filter @repo/dummy-preview-web exec playwright install --with-deps
 
-      - name: Run E2E tests
+      - name: Run UI test tests
         env:
-          FILTERS: ${{ inputs.filter_args }}
-        run: pnpm e2e $FILTERS
-      
-      - name: Collect E2E Reports
-        run: pnpm tsx ./.github/scripts/collect-e2e-reports.ts
-      
-      - name: upload E2E Reports
+          PACKAGES: ${{ inputs.packages }}
+        run: pnpm exec tsx .github/scripts/deploy/ci.ts ui_test
+
+      - name: Collect UI test Reports
+        run: pnpm tsx ./.github/scripts/collect-ui_test-reports.ts
+
+      - name: upload UI test Reports
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: e2e-reports
-          path: e2e-reports
+          name: ui_test-reports
+          path: ui_test-reports

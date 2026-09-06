@@ -18,6 +18,14 @@ export function runPlaceBackend(
 
   updatePackageJson(plan.targetDir, plan.appName, plan.port, inspectorPort);
   updateWranglerConfig(plan.targetDir, plan.appName, plan.port);
+  const deploymentPath = join(plan.targetDir, "deployment.yaml");
+  writeFileSync(
+    deploymentPath,
+    readFileSync(deploymentPath, "utf8").replaceAll(
+      "backend-template",
+      plan.appName,
+    ),
+  );
 
   return {
     ...plan,
@@ -100,7 +108,7 @@ function updateWranglerConfig(
   let didReplaceSelfPort = false;
   const updated = renamed.replace(/"SELF"\s*:\s*"[^"]*:\d{2,5}"/, () => {
     didReplaceSelfPort = true;
-    return `"SELF": "localhost:${port}"`;
+    return `"SELF": "http://localhost:${port}"`;
   });
 
   if (!didReplaceSelfPort) {

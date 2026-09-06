@@ -12,36 +12,36 @@
 
 操作時に指定するのは channel です．purpose と profile は channel から一意に導出します．
 
-| Channel | Purpose（目的） | Profile（設定の基準） | 環境の識別 |
-| --- | --- | --- | --- |
-| `staging` | `update` | `staging` | staging 環境 |
-| `release` | `update` | `release` | release 環境 |
-| `preview` | `review` | `staging` | PR 番号ごとのレビュー用環境 |
+| Channel   | Purpose（目的） | Profile（設定の基準） | 環境の識別                  |
+| --------- | --------------- | --------------------- | --------------------------- |
+| `staging` | `update`        | `staging`             | staging 環境                |
+| `release` | `update`        | `release`             | release 環境                |
+| `preview` | `review`        | `staging`             | PR 番号ごとのレビュー用環境 |
 
 purpose が `update` の場合は，変更の影響を受けるパッケージを更新します．purpose が `review` の場合は，変更を確認するための利用経路に必要なパッケージを選び，その中の接続を preview 向けに組み替えます．選択単位はワークスペースパッケージであり，実際にデプロイできるかは対象コミットの `package.json` に `scripts.deploy` があるかで判断します．
 
 selection source は起点の求め方を表し，`diff`・`full`・`manual-pick` のいずれかです．mode は purpose と selection source の有効な組み合わせであり，独立した設定項目ではありません．本書では `(purpose, selection source)` と表記します．
 
-| Mode | Channel | 対象選定の概要 |
-| --- | --- | --- |
-| (`update`, `diff`) | staging / release | 差分の影響を受けるパッケージを更新する |
-| (`update`, `full`) | staging / release | 全パッケージを候補として更新する |
-| (`review`, `diff`) | preview | 差分の影響を起点に確認経路を選ぶ |
-| (`review`, `manual-pick`) | preview | 指定パッケージとその影響先を起点に確認経路を選ぶ |
+| Mode                      | Channel           | 対象選定の概要                                   |
+| ------------------------- | ----------------- | ------------------------------------------------ |
+| (`update`, `diff`)        | staging / release | 差分の影響を受けるパッケージを更新する           |
+| (`update`, `full`)        | staging / release | 全パッケージを候補として更新する                 |
+| (`review`, `diff`)        | preview           | 差分の影響を起点に確認経路を選ぶ                 |
+| (`review`, `manual-pick`) | preview           | 指定パッケージとその影響先を起点に確認経路を選ぶ |
 
 トリガーは対応する mode の計画処理を起動します．mode を必須の受け渡しフィールドとしては規定しません．計画中に (`update`, `diff`) から (`update`, `full`) へ切り替える場合も，対象 SHA と channel を維持します．
 
 ## 全体構成と入出力
 
-GitHub Actions の Workflow が全体を制御し，対象選定には Turborepo と補助スクリプト，設定生成には `@repo/env-config`，テスト・ビルド・デプロイには各パッケージのスクリプトを使用します．フェーズは責務の区分であり，それぞれを独立したジョブやスクリプトにすることは必須ではありません．
+GitHub Actions の Workflow が全体を制御し，対象選定には Turborepo と補助スクリプト，設定生成には `@repo/app-config`，テスト・ビルド・デプロイには各パッケージのスクリプトを使用します．フェーズは責務の区分であり，それぞれを独立したジョブやスクリプトにすることは必須ではありません．
 
-| フェーズ | 責務 | 出力 |
-| --- | --- | --- |
+| フェーズ | 責務                                               | 出力                                                         |
+| -------- | -------------------------------------------------- | ------------------------------------------------------------ |
 | トリガー | 起動条件と開始時の mode を決め，対象の版を固定する | channel，対象 SHA，比較基準 SHA，PR 番号，手動指定パッケージ |
-| 計画 | テスト対象・デプロイ候補を選び，接続方針を決める | `changes` と `targets` |
-| 準備 | 依存解決，設定同期，テスト，成果物生成を行う | デプロイアーティファクト |
-| 実行 | デプロイ可能な候補を反映する | パッケージごとの実行結果と標準出力 |
-| 通知 | 成否と確認先を記録・通知する | Actions の実行記録，preview の PR コメント |
+| 計画     | テスト対象・デプロイ候補を選び，接続方針を決める   | `changes` と `targets`                                       |
+| 準備     | 依存解決，設定同期，テスト，成果物生成を行う       | デプロイアーティファクト                                     |
+| 実行     | デプロイ可能な候補を反映する                       | パッケージごとの実行結果と標準出力                           |
+| 通知     | 成否と確認先を記録・通知する                       | Actions の実行記録，preview の PR コメント                   |
 
 比較基準 SHA は selection source が `diff` の場合，PR 番号は preview，手動指定パッケージは selection source が `manual-pick` の場合に使用します．要求の対象 SHA は全フェーズで共通とし，途中でタグやブランチの最新位置に読み替えません．
 
@@ -59,13 +59,13 @@ flowchart LR
 
 ### 起動条件と対象コミット
 
-| Channel / Mode | 起動条件 | 比較基準（BASE） | 対象（HEAD） |
-| --- | --- | --- | --- |
-| staging / (`update`, `diff`) | `staging` タグの付け替え | 付け替え前のコミット | 付け替え先のコミット |
-| release / (`update`, `diff`) | `release` タグの付け替え | 付け替え前のコミット | 付け替え先のコミット |
-| staging・release / (`update`, `full`) | channel を指定した `workflow_dispatch` | 使用しない | 受付時に対応するタグが指すコミット |
-| preview / (`review`, `diff`) | main 向け PR の `opened`・`reopened`・`synchronize` | 起動時の PR の base コミット | 起動時の PR の head コミット |
-| preview / (`review`, `manual-pick`) | PR コメントの `/preview <package-name> ...` | 使用しない | コマンド受付時の PR の head コミット |
+| Channel / Mode                        | 起動条件                                            | 比較基準（BASE）             | 対象（HEAD）                         |
+| ------------------------------------- | --------------------------------------------------- | ---------------------------- | ------------------------------------ |
+| staging / (`update`, `diff`)          | `staging` タグの付け替え                            | 付け替え前のコミット         | 付け替え先のコミット                 |
+| release / (`update`, `diff`)          | `release` タグの付け替え                            | 付け替え前のコミット         | 付け替え先のコミット                 |
+| staging・release / (`update`, `full`) | channel を指定した `workflow_dispatch`              | 使用しない                   | 受付時に対応するタグが指すコミット   |
+| preview / (`review`, `diff`)          | main 向け PR の `opened`・`reopened`・`synchronize` | 起動時の PR の base コミット | 起動時の PR の head コミット         |
+| preview / (`review`, `manual-pick`)   | PR コメントの `/preview <package-name> ...`         | 使用しない                   | コマンド受付時の PR の head コミット |
 
 手動の full で任意のコミットを直接指定することはできません．指定した channel のタグを解決し，その SHA を固定します．manual-pick でも，パッケージの実在性確認からデプロイまで同じ head SHA を使用します．
 
@@ -87,9 +87,7 @@ purpose が `review` の場合は，同じ PR の実行中の要求をキャン�
 
 ```json
 {
-  "changes": [
-    { "package": "@repo/example-api", "path": "apps/example-api" }
-  ],
+  "changes": [{ "package": "@repo/example-api", "path": "apps/example-api" }],
   "targets": [
     { "package": "@repo/example-api", "path": "apps/example-api" },
     { "package": "@repo/example-web", "path": "apps/example-web" }
@@ -105,9 +103,9 @@ channel や PR 番号などは計画結果へ再出力せず，後続フェー�
 
 通常経路では，固定した BASE と HEAD に対して次の選定を行います．
 
-| 出力 | 選定方法 |
-| --- | --- |
-| `changes` | BASE と HEAD の比較で直接変更されたパッケージ |
+| 出力      | 選定方法                                                   |
+| --------- | ---------------------------------------------------------- |
+| `changes` | BASE と HEAD の比較で直接変更されたパッケージ              |
 | `targets` | 直接変更されたパッケージと，パッケージ依存関係による影響先 |
 
 デプロイ時に統合テストは行わず，直接変更されたパッケージをテスト対象とします．接続構成は channel に対応する profile の設定を採用し，計画時の個別の組み替えは行いません．
@@ -142,11 +140,11 @@ connection グラフは，各パッケージの `deployment.yaml` の `connectio
 
 `/preview <package-name> ...` の引数を手動指定の起点とします．パッケージ名は通常 `@repo/xxxx` の形式です．変更検知は行わず，固定した対象 SHA で指定パッケージの実在性を確認します．
 
-| 入力 | 結果 |
-| --- | --- |
-| 引数が空 | 異常終了し，Usage として `/preview <package-name> ...` を案内する |
+| 入力                       | 結果                                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------------------- |
+| 引数が空                   | 異常終了し，Usage として `/preview <package-name> ...` を案内する                                   |
 | 実在しないパッケージを含む | 異常終了し，PR の返信コメントで通知する．実在した指定があれば，それだけを用いた修正コマンド例を示す |
-| 全指定が実在する | 指定パッケージを `changes` に設定し，対象選定を続ける |
+| 全指定が実在する           | 指定パッケージを `changes` に設定し，対象選定を続ける                                               |
 
 実在性確認による入力エラーは，待機を終えて runner 上で処理を実行開始してから理想的には 10 秒以内，遅くとも 20 秒以内に返すことを要件とします．
 
@@ -156,11 +154,11 @@ connection グラフは，各パッケージの `deployment.yaml` の `connectio
 
 staging profile の設定を基礎に，`connections` で指定された接続先が `targets` 内の Worker であれば preview 向けに差し替えます．`targets` 外の既存リソースへの接続は staging の設定を維持します．
 
-| 項目 | preview の値 |
-| --- | --- |
-| Worker 名 | `{素のWorker名}-preview-pr-{PR_NUMBER}` |
-| Worker の URL | `https://{素のWorker名}-preview-pr-{PR_NUMBER}.nushinkan2.workers.dev` を基にしたベース URL |
-| Service Binding | 接続先の preview Worker 名 |
+| 項目            | preview の値                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| Worker 名       | `{素のWorker名}-preview-pr-{PR_NUMBER}`                                                     |
+| Worker の URL   | `https://{素のWorker名}-preview-pr-{PR_NUMBER}.nushinkan2.workers.dev` を基にしたベース URL |
+| Service Binding | 接続先の preview Worker 名                                                                  |
 
 素の Worker 名は profile のサフィックスを付ける前の名前です．staging のサフィックスに preview のサフィックスを重ねることはしません．URL は環境設定の設計に従い，必要なパスを含むベース URL として扱います．
 
@@ -168,8 +166,8 @@ staging profile の設定を基礎に，`connections` で指定された接続�
 
 ### 実行順序
 
-1. テスト・ビルド・env-config に必要な `devDependencies` を含めて依存解決する．
-2. `@repo/env-config` を実行可能な状態に整え，local の環境変数をネイティブファイルに同期する．
+1. テスト・ビルド・app-config に必要な `devDependencies` を含めて依存解決する．
+2. `@repo/app-config` を実行可能な状態に整え，local の環境変数をネイティブファイルに同期する．
 3. `changes` のパッケージを対象に，テストを実行する．
 4. `targets` のパッケージを対象に，デプロイアーティファクトを生成する．
 
@@ -179,11 +177,11 @@ staging profile の設定を基礎に，`connections` で指定された接続�
 
 Workflow は環境変数を介して次の入力を `build` スクリプトへ渡します．
 
-| 入力 | 内容・検証 |
-| --- | --- |
-| `DEPLOY_CHANNEL` | `staging`・`release`・`preview` のいずれか |
-| `PR_NUMBER` | preview は正の整数．それ以外では `-1` を渡し，生成処理では使用しない |
-| `targets` | 計画したデプロイ候補の集合．接続先の差し替え判定に使う |
+| 入力             | 内容・検証                                                           |
+| ---------------- | -------------------------------------------------------------------- |
+| `DEPLOY_CHANNEL` | `staging`・`release`・`preview` のいずれか                           |
+| `PR_NUMBER`      | preview は正の整数．それ以外では `-1` を渡し，生成処理では使用しない |
+| `targets`        | 計画したデプロイ候補の集合．接続先の差し替え判定に使う               |
 
 `targets` は論理的な入力名です．環境変数名とシリアライズ形式の具体化は，実装計画で扱います．
 
@@ -191,7 +189,7 @@ Workflow は環境変数を介して次の入力を `build` スクリプトへ�
 
 ### デプロイアーティファクト
 
-各パッケージのデプロイ用 `build` は，`@repo/env-config/materialize` を利用して，パッケージ直下に `.generated/.env.deploy` と `.generated/wrangler.jsonc` を生成します．frontend では，配信するビルド成果物 `dist` も用意します．
+各パッケージのデプロイ用 `build` は，`@repo/app-config/materialize` を利用して，パッケージ直下に `.generated/.env.deploy` と `.generated/wrangler.jsonc` を生成します．frontend では，配信するビルド成果物 `dist` も用意します．
 
 purpose が `update` の場合は，環境設定の設計に従い，対応する profile の値を反映します．preview では staging profile を基礎に生成し，計画した接続方針で上書きします．設定値の優先順位は，高い順に次のとおりです．
 
@@ -224,13 +222,13 @@ purpose が `update` の場合は，専用の外部通知は行いません．�
 
 purpose が `review` の場合は，実行フェーズの標準出力を解析し，対象 PR に結果をコメントします．対象の版とともに，対象となった各パッケージについて次を示します．
 
-| 項目 | 内容 |
-| --- | --- |
-| パッケージ名 | 対象パッケージの識別子 |
-| 結果 | デプロイ済み・デプロイ不要・デプロイ失敗 |
-| Worker 名 | 存在する場合に表示 |
-| 確認用 URL | frontend で存在する場合に表示 |
-| エラーメッセージ | デプロイ失敗の場合に表示 |
+| 項目             | 内容                                     |
+| ---------------- | ---------------------------------------- |
+| パッケージ名     | 対象パッケージの識別子                   |
+| 結果             | デプロイ済み・デプロイ不要・デプロイ失敗 |
+| Worker 名        | 存在する場合に表示                       |
+| 確認用 URL       | frontend で存在する場合に表示            |
+| エラーメッセージ | デプロイ失敗の場合に表示                 |
 
 入力検証・計画・準備で失敗し，デプロイを実行していない場合も，失敗したフェーズと理由をコメントします．通知の失敗とデプロイの失敗は区別し，通知だけが失敗した場合にデプロイをやり直す必要はありません．
 

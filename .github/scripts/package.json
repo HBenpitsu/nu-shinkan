@@ -10,6 +10,8 @@
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.11",
-    "yaml": "^2.9.0"
-  }
+    "yaml": "^2.9.0",
+    "@repo/app-config": "workspace:*"
+  },
+  "name": "@repo/github-scripts"
 }

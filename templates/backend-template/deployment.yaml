@@ -1,0 +1,10 @@
+envs:
+  staging:
+    SELF: https://backend-template-staging.nushinkan2.workers.dev
+  release:
+    SELF: https://backend-template-release.nushinkan2.workers.dev
+connections:
+  bindings: {}
+  urls:
+    SELF: "@repo/backend-template"
+reviewEntry: false

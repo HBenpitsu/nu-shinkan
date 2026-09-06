@@ -10,29 +10,21 @@
 		"global_fetch_strictly_public"
 	],
 	"assets": {
-		"directory": "./dist"
-	},
-	"env": {
-		"release": {
-			"services": [
-				{
-					"binding": "DUMMY_PREVIEW_API",
-					"service": "dummy-preview-api"
-				}
-			]
-		},
-		"staging": {
-			"services": [
-				{
-					"binding": "DUMMY_PREVIEW_API",
-					"service": "dummy-preview-api"
-				}
-			]
-		},
-		"preview": {}
-	},
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/__connection"
+    ]
+  },
 	"observability": {
 		"enabled": true,
 		"head_sampling_rate": 1
-	}
+  },
+  "services": [
+    {
+      "binding": "DUMMY_PREVIEW_API",
+      "service": "dummy-preview-api"
+    }
+  ],
+  "main": "src/worker.ts"
 }

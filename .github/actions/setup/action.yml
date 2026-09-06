@@ -7,14 +7,9 @@ inputs:
       value to differentiate the cache key variants.
       typically it is a tag name "release" or "staging".
     required: true
-    type: string
   turbo_cache:
     description: Indicates whether to update the Turbo cache.
     required: true
-    type: choice
-    options:
-      - 'readonly'
-      - 'update'
 
 runs:
   using: "composite"
@@ -46,7 +41,6 @@ runs:
           echo "node_modules cache-hit: ${{ steps.cache-node-modules.outputs.cache-hit }}"
 
       - name: Install dependencies
-        if: ${{ steps.cache-node-modules.outputs.cache-hit != 'true' }}
         env:
           HUSKY: 0
         shell: bash

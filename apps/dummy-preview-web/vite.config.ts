@@ -6,7 +6,10 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 export default defineConfig(({ mode }) => ({
   root: "./src",
   publicDir: "./public",
-  envDir: mode === "development" ? "." : "./.generated",
+  envDir:
+    mode === "development"
+      ? import.meta.dirname
+      : import.meta.dirname + "/.generated",
   build: {
     outDir: "../dist",
     emptyOutDir: true,

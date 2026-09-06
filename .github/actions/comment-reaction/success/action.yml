@@ -1,0 +1,11 @@
+name: Comment success reaction
+description: Register the success reaction at the end of the job.
+inputs:
+  token:
+    description: GitHub token
+    required: true
+runs:
+  using: node24
+  main: main.mjs
+  post: post.mjs
+  post-if: success()

@@ -1,0 +1,33 @@
+{
+  "name": "@repo/app-config",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "prepare": "tsc -b",
+    "test": "vitest src/",
+    "lint": "eslint . --fix",
+    "compile": "eslint . --fix && vitest src/ --run && tsc -b"
+  },
+  "bin": {
+    "materialize": "./bin/materialize.js",
+    "sync": "./bin/sync-local.js",
+    "app-build": "./bin/build.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
+    "jsonc-parser": "^3.3.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11",
+    "yaml": "^2.9.0"
+  },
+  "exports": {
+    "./deployment": "./bin/config-file/deployment.yaml.js",
+    "./workspace": "./bin/workspace.js",
+    "./context": "./bin/materialize/context.js"
+  }
+}

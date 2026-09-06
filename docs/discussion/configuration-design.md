@@ -37,17 +37,17 @@ Honoプロジェクト（backend）であれば，実行時環境変数は，`wr
 
 ```yaml
 envs:
-    # local向けの環境変数の設定値は.env.developmentやwrangler.jsoncに書きます．
-    release:
-        [環境変数名]: [releaseプロファイルでの設定値]
-    staging:
-        [環境変数名]: [stagingプロファイルでの設定値]
+  # local向けの環境変数の設定値は.env.developmentやwrangler.jsoncに書きます．
+  release:
+    [環境変数名]: [releaseプロファイルでの設定値]
+  staging:
+    [環境変数名]: [stagingプロファイルでの設定値]
 
 connections:
-    bindings:
-        [BINDING名]: [Service Workerのパッケージ名 @repo/xxxxなど]
-    urls:
-        [環境変数名]: [APIを提供するWorkerのパッケージ名 @repo/xxxxなど]
+  bindings:
+    [BINDING名]: [Service Workerのパッケージ名 @repo/xxxxなど]
+  urls:
+    [環境変数名]: [APIを提供するWorkerのパッケージ名 @repo/xxxxなど]
 
 reviewEntry: [boolean]
 ```
@@ -61,10 +61,10 @@ reviewEntry: [boolean]
 
 ```yaml
 envs:
-    release:
-        ENV: RELEASE
-    staging:
-        ENV: STAGING
+  release:
+    ENV: RELEASE
+  staging:
+    ENV: STAGING
 ```
 
 `envs`フィールドで指定の無い環境変数については，ネイティブファイルの設定を引き継つぐ．
@@ -102,9 +102,9 @@ envs:
 
 `deployment.yaml`自体がパッケージ内に存在しない場合は，すべての項目が省略されたものとみなす．
 
-# env-configによる実行時環境変数の配布
+# app-configによる実行時環境変数の配布
 
-`packages/env-config`パッケージの`globalRuntimeEnvs.yaml`で，全パッケージで利用される実行時環境変数を設定できる．書式は次の通り．
+`packages/app-config`パッケージの`globalRuntimeEnvs.yaml`で，全パッケージで利用される実行時環境変数を設定できる．書式は次の通り．
 
 ```yaml
 local:

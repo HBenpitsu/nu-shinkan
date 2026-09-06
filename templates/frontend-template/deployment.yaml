@@ -1,0 +1,10 @@
+envs:
+  staging:
+    SELF: https://frontend-template-staging.nushinkan2.workers.dev
+  release:
+    SELF: https://frontend-template-release.nushinkan2.workers.dev
+connections:
+  bindings: {}
+  urls:
+    SELF: "@repo/frontend-template"
+reviewEntry: true
