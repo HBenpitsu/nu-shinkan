@@ -1,12 +1,6 @@
-import {
-  commit,
-  isAncestor,
-  list,
-  validatePicks,
-  type Package,
-  type DeployTarget,
-  resolveWorkers,
-} from "./workspace.js";
+import { commit, isAncestor, list, validatePicks } from "../workspace/query.js";
+import { resolveWorkers } from "../workspace/workers.js";
+import type { Package, DeployTarget } from "../workspace/workspace.js";
 import { reviewTargets } from "./graph.js";
 export type Request = {
   channel: "staging" | "release" | "preview";

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import type { Package } from "./workspace.js";
+import type { Package } from "../workspace/workspace.js";
 
 /** The connection-graph tools exchange JSON through stdout/stdin. */
 export function reviewTargets(starts: Package[]): Package[] {

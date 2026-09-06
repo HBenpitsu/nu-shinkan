@@ -474,3 +474,8 @@ GitHub Actions の起動，コメント投稿，Cloudflare への実 deploy／�
 ## 計画スキーマの更新
 
 現行の計画は `changes: string[]` と `targets: { package, path, workerName? }[]` を返す。Worker基底名は計画時に付与し、準備時の再収集と `WORKER_NAMES` は廃止する。旧記述のchangesのpathおよびWorker情報の別途受け渡しは現行仕様には適用しない。
+
+
+## リポジトリ処理の移管
+
+旧 `.github/scripts/deploy/` の計画・グラフ連携・実行・結果集計と対応テストを `scripts/deploy/` に移した。Turbo照会・指定名検証・Git比較は `scripts/workspace/query.ts` に移した。GitHub側の入口は `commands.ts` を通してCLIを呼ぶ。本文の旧配置は移管前の記録である。

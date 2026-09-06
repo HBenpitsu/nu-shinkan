@@ -1,13 +1,6 @@
 import { execFileSync } from "node:child_process";
-export type Package = { package: string; path: string };
-export function listWorkspacePackages(): Package[] {
-  return JSON.parse(
-    execFileSync("pnpm", ["exec", "tsx", "scripts/workspace/list.ts"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "inherit"],
-    }),
-  );
-}
+import type { Package } from "./workspace.js";
+
 export function normalizeWorkspace(value: unknown): Package[] {
   const items = (value as { packages?: { items?: unknown } })?.packages?.items;
   if (!Array.isArray(items)) throw new Error("Invalid turbo ls output");
@@ -66,26 +59,4 @@ export function isAncestor(base: string, head: string): boolean {
   } catch {
     return false;
   }
-}
-
-export type DeployTarget = Package & { workerName?: string };
-
-export function resolveWorkers(packages: Package[]): DeployTarget[] {
-  if (!packages.length) return [];
-  const workers: Record<string, string> = JSON.parse(
-    execFileSync(
-      "pnpm",
-      ["exec", "tsx", "scripts/workspace/resolve-workers.ts"],
-      {
-        input: JSON.stringify(packages),
-        encoding: "utf8",
-        stdio: ["pipe", "pipe", "inherit"],
-      },
-    ),
-  );
-  return packages.map((pkg) =>
-    Object.hasOwn(workers, pkg.package)
-      ? { ...pkg, workerName: workers[pkg.package] }
-      : { ...pkg },
-  );
 }

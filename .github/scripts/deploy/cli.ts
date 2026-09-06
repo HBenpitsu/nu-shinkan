@@ -7,8 +7,7 @@ import {
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { parseContext } from "@repo/app-config/context";
-import { plan, type Request } from "./plan.js";
-import { runDeploy, runTask } from "./run.js";
+import { executeDeployCommand } from "./commands.js";
 import { cleanup } from "./cleanup.js";
 import { currentPR, operation, prNumber } from "./request.js";
 import { notify } from "./notify.js";
@@ -58,13 +57,16 @@ try {
       }).trim();
       if (actual !== report.head)
         throw new Error(`Checkout SHA mismatch: ${actual} != ${report.head}`);
-      const result = plan({
+      const result = executeDeployCommand<{
+        changes: string[];
+        targets: Report["targets"];
+      }>("plan", {
         channel: report.channel,
         source,
         head: report.head,
         base: report.base,
         picks: JSON.parse(env.PICKS ?? "[]"),
-      } as Request);
+      });
       Object.assign(report, result);
       output("changes", result.changes);
       output("targets", result.targets);
@@ -76,14 +78,14 @@ try {
     case "prepare":
       report.phase = "test";
       save();
-      runTask("test", report.changes, ["--", "--run"]);
+      executeDeployCommand("task", { task: "test", packages: report.changes });
       report.phase = "build";
       save();
       parseContext(env);
-      runTask(
-        "build",
-        report.targets.map((p) => p.package),
-      );
+      executeDeployCommand("task", {
+        task: "build",
+        packages: report.targets.map((p) => p.package),
+      });
       break;
     case "deploy": {
       if (
@@ -95,10 +97,13 @@ try {
       }
       report.phase = "deploy";
       save();
-      const result = runDeploy(
-        report.targets,
-        env.SELECTION_SOURCE === "manual-pick",
-      );
+      const result = executeDeployCommand<{
+        results: Report["results"];
+        failed: boolean;
+      }>("deploy", {
+        targets: report.targets,
+        manual: env.SELECTION_SOURCE === "manual-pick",
+      });
       report.results = result.results;
       if (result.failed) throw new Error("One or more deployments failed");
       report.phase = "complete";

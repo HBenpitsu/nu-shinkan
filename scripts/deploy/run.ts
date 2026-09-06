@@ -10,7 +10,7 @@ import {
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { resultFor, type Summary } from "./results.js";
-import type { Package } from "./workspace.js";
+import type { Package } from "../workspace/workspace.js";
 export function taskArgs(
   task: string,
   packages: string[],
@@ -33,7 +33,9 @@ export function runTask(
 ): void {
   const args = taskArgs(task, packages);
   if (!args) return;
-  const result = spawnSync("pnpm", [...args, ...extra], { stdio: "inherit" });
+  const result = spawnSync("pnpm", [...args, ...extra], {
+    stdio: ["inherit", 2, 2],
+  });
   if (result.status !== 0)
     throw new Error(
       `${task} failed (${result.status}): ${result.error ?? "see logs"}`,
@@ -72,7 +74,7 @@ export function runDeploy(targets: Package[], manual: boolean) {
       )
     : undefined;
   const output = `${execution?.stdout ?? ""}${execution?.stderr ?? ""}`;
-  process.stdout.write(output);
+  process.stderr.write(output);
   writeFileSync(".artifacts/deploy/turbo.log", output);
   const summaries = existsSync(".turbo/runs")
     ? readdirSync(".turbo/runs").filter(

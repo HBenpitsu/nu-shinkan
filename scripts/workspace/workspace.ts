@@ -2,6 +2,9 @@ import { existsSync, readFileSync, globSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import YAML from "yaml";
 
+export type Package = { package: string; path: string };
+export type DeployTarget = Package & { workerName?: string };
+
 // Main Logic
 
 export function listWorkspacePackages(

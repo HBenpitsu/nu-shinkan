@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { normalizeWorkspace, validatePicks } from "./workspace.js";
+import { normalizeWorkspace, validatePicks } from "./query.js";
 const packages = [{ package: "@repo/api", path: "apps/api" }];
 it("normalizes actual Turbo 2.10.12 format", () =>
   expect(
