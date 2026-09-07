@@ -4,27 +4,6 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 import { testExports } from "@repo/app-config/deployment";
 import { ConnectionGraph } from "./graph.js";
-import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
-
-// workspace読み取りはクラスではなくbuild CLIの責務として検証する。
-function buildWorkspaceConnectionGraph(root: string): ConnectionGraph {
-  return ConnectionGraph.fromJSON(
-    JSON.parse(
-      execFileSync(
-        "pnpm",
-        [
-          "exec",
-          "tsx",
-          fileURLToPath(new URL("./build.ts", import.meta.url)),
-          "--root",
-          root,
-        ],
-        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-      ),
-    ),
-  );
-}
 
 it("selects every entry path, including cycles, but not unrelated dependencies", () => {
   const names = ["api", "a", "b", "web", "other", "batch", "orphan"];
@@ -108,14 +87,14 @@ it("reads workspace configuration, missing deployment files, and exclusions", ()
       join(root, "apps/web/deployment.yaml"),
       "reviewEntry: true\nconnections:\n  urls:\n    API: api\n",
     );
-    const graph = buildWorkspaceConnectionGraph(root);
+    const graph = ConnectionGraph.fromWorkspace(root);
     expect(graph.toJSON().packages).toEqual(["api", "shared", "web"]);
     expect(graph.selectReviewTargets(["api"])).toEqual(["api", "web"]);
     writeFileSync(
       join(root, "apps/web/deployment.yaml"),
       "connections:\n  urls: []\n",
     );
-    expect(() => buildWorkspaceConnectionGraph(root)).toThrow(
+    expect(() => ConnectionGraph.fromWorkspace(root)).toThrow(
       "expected mapping",
     );
   } finally {

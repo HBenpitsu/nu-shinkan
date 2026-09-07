@@ -23,7 +23,7 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 ## build.ts
 
-`--root <directory>` で対象 workspace ルートを指定できる。省略時はカレントディレクトリから pnpm workspace ルートを探す。
+このリポジトリ専用で、CLI引数は受け付けない。`graph.ts` 自身の配置からpnpm workspaceルートを特定するため、カレントディレクトリによらず同じcheckoutを対象にする。
 
 全パッケージの `deployment.yaml` を既存の app-config ローダーで読み、`connections.bindings` / `urls` を接続元 → 接続先の辺に変換する。自己ループ・不明な接続先は無視し、重複する辺をまとめる。設定省略・不正な `reviewEntry` の扱いもローダーに従う。
 
@@ -49,8 +49,10 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 ## 内部構成
 
-`ConnectionGraph` はグラフデータと探索を保持する。`fromDeployments(packages, deployments)` で構築し、`fromJSON(value)` で検証・復元する。`selectReviewTargets(sources)` がreview対象を返し、`toJSON()` は `{ packages, edges, reviewEntries }` を返す。
+`ConnectionGraph` はグラフデータと探索を保持する。`fromWorkspace(root?)` でworkspaceの設定を読み取って構築する。読み取り済みの設定には `fromDeployments(packages, deployments)` を使い、`fromJSON(value)` で検証・復元する。`selectReviewTargets(sources)` がreview対象を返し、`toJSON()` は `{ packages, edges, reviewEntries }` を返す。
 
-接続先（destinations）・呼び出し元（callers）の隣接リストは構築時に一度だけ生成する。入力・返却データをコピーし、外部からの変更で探索結果が変わらないようにする。workspace設定の収集は `workspace/configs.ts`、deploymentファイルの読み取りは `build.ts`、入力JSONの読み取りと引数検証は `select.ts` が担当する。
+接続先（destinations）・呼び出し元（callers）の隣接リストは構築時に一度だけ生成する。入力・返却データをコピーし、外部からの変更で探索結果が変わらないようにする。workspace設定の収集は `workspace/configs.ts`、deploymentファイルの読み取りは `ConnectionGraph.fromWorkspace()`、`build.ts` はCLIの引数検証・JSON出力・エラー処理、`select.ts` は入力JSONの読み取り・引数検証・選定結果の出力を担当する。
 
 グラフはパッケージ名だけをノードとして保持し、pathやWorker名は持たない。計画側が選定された名前をworkspaceのパッケージ情報に対応づけ、Worker名を付与して最終的なtargetsを作る。
+
+workspace読み取りのテストでは、`ConnectionGraph.fromWorkspace(root)` に一時workspaceを渡す。CLIテストでは実際のリポジトリを使い、JSONの受け渡しとカレントディレクトリに依存しないことを検証する。
