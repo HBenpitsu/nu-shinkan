@@ -1,4 +1,4 @@
-name: Nightly checks
+name: ナイトリーチェック
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -12,9 +12,7 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/use-repo
-      - name: Check workflow tooling types
+      - name: ワークフローツールの型チェック
         run: pnpm --filter @repo/scripts exec tsc --noEmit
-      - name: Unit tests
-        uses: ./.github/actions/vi-test
-      - name: UI tests
-        uses: ./.github/actions/ui-test
+      - uses: ./.github/actions/vi-test
+      - uses: ./.github/actions/ui-test

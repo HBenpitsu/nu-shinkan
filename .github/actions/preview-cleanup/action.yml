@@ -1,15 +1,14 @@
-name: Cleanup preview Workers for PR
-description: Cleanup each package's Worker for one PR.
+name: PR向けプレビューWorkersのクリーンアップ
+description: 単一のPRに対応する各パッケージのWorkerを削除します。
 inputs:
   pr_number:
-    description: PR number to prune
+    description: 削除対象のPR番号
     required: true
 runs:
   using: composite
   steps:
     - uses: ./.github/actions/use-repo
-    - name: Cleanup preview Workers
-      shell: bash
+    - shell: bash
       env:
         PR_NUMBER: ${{ inputs.pr_number }}
       run: pnpm exec turbo run undeploy:preview --only --continue=always

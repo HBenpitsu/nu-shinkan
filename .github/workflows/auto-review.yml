@@ -1,4 +1,4 @@
-name: Auto Review Workflow
+name: 自動レビュー
 on:
   pull_request:
     types: [opened, synchronize]
@@ -13,7 +13,6 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
-      - name: Run Auto Review
-        uses: ./.github/actions/auto-review
+      - uses: ./.github/actions/auto-review
         with:
           pr_number: ${{ github.event.pull_request.number }}

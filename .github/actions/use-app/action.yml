@@ -1,21 +1,21 @@
-name: Repository Setup with GitHub App
-description: Checkout Repository with GitHub App credentials
+name: GitHub Appによるリポジトリセットアップ
+description: GitHub App認証情報を使用してリポジトリをセットアップします。
 
 inputs:
   APP_ID:
-    description: GitHub App ID.
+    description: GitHub App ID
     required: true
   APP_PRIVATE_KEY:
-    description: GitHub App private key.
+    description: GitHub App 秘密鍵
     required: true
 outputs:
   TOKEN: 
-    description: GitHub App token for the repository.
+    description: リポジトリ用 GitHub App トークン
     value: ${{ steps.app-token.outputs.token }}
 runs:
   using: "composite"
   steps:
-    - name: Validate GitHub App credentials
+    - name: GitHub App認証情報の検証
       shell: bash
       env:
         APP_ID: ${{ inputs.APP_ID }}
@@ -33,8 +33,7 @@ runs:
           exit 1
         fi
 
-    - name: Generate GitHub App token
-      id: app-token
+    - id: app-token
       uses: actions/create-github-app-token@v1
       with:
         app-id: ${{ inputs.APP_ID }}

@@ -1,4 +1,4 @@
-name: Retag Release to Staging
+name: releaseタグをstagingと同じコミットに再設定
 
 on:
   workflow_dispatch:
@@ -9,12 +9,11 @@ concurrency:
 
 jobs:
   retag:
-    name: Move release to staging commit
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           sparse-checkout: /.github/
@@ -27,12 +26,12 @@ jobs:
           APP_ID: ${{ secrets.RETAG_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
 
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
 
-      - name: Retag release to staging commit
+      - name: releaseタグの再設定
         shell: bash
         run: |
           set -euo pipefail

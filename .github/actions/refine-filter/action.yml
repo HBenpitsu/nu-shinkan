@@ -1,21 +1,21 @@
-name: Refine Turbo Filter
-description: Refines Turbo filters to match a specific task and outputs the arguments for direct and dependency tasks.
+name: Turboフィルターの絞り込み
+description: 特定のタスクに一致するようにTurboフィルターを絞り込み、直接タスクおよび依存タスクの引数を出力します。
 inputs:
   task:
-    description: turbo task
+    description: 対象のTurboタスク名
     required: true
   filter:
-    description: Turbo filters
+    description: 絞り込み対象のTurboフィルター
     default: ""
 outputs:
   packages:
-    description: Exact package names as JSON
+    description: 正確なパッケージ名のJSON配列
   deps_args:
-    description: Dependency arguments as JSON
+    description: 依存関係引数のJSON配列
   affected_args:
-    description: Exact task arguments as JSON
+    description: タスク実行用引数のJSON配列
   has_hit:
-    description: Whether matching tasks exist
+    description: 一致するタスクが存在するかどうか（"true" または "false"）
 runs:
   using: node24
   main: refine-filter.mjs

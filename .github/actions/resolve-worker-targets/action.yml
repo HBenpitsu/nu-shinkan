@@ -1,18 +1,17 @@
-name: Resolve Worker Targets
-description: Resolves Worker package metadata targets using configs-cli.
+name: Workerターゲットの解決
+description: configs-cli を使用してWorkerパッケージのメタデータターゲットを解決します。
 inputs:
   packages:
-    description: JSON array of package names
+    description: パッケージ名のJSON配列
     required: true
 outputs:
   targets:
-    description: Worker targets metadata as JSON
+    description: JSON形式のWorkerターゲットメタデータ
     value: ${{ steps.resolve.outputs.targets }}
 runs:
   using: composite
   steps:
-    - name: Resolve Worker metadata
-      id: resolve
+    - id: resolve
       shell: bash
       env:
         PACKAGES: ${{ inputs.packages }}

@@ -1,17 +1,17 @@
-name: Run Unit Test (vitest)
-description: Run unit tests for the project.
+name: テスト (Vitest)
+description: プロジェクト単位のテストを実行します。
 
 inputs:
   context:
-    description: Test context. Test results that share the same context will be cached.
+    description: テストコンテキスト。同一コンテキストを共有するテスト結果は turbo によってキャッシュされます。
     required: false
   filter:
-    description: Turbo filters as text or a JSON array; [] selects no tests
+    description: テストまたはJSON配列指定のTurboフィルター。[] はテストなしを選択
     required: false
   pr_number:
     description: |
-      PR or issue number. Defaults to the PR or issue from the triggering event. 
-      Commenting requires pull-requests write (PR) or issues write (issue) permission.
+      PRまたはIssue番号。既定値はトリガーイベントのPRまたはIssue。
+      コメント投稿には pull-requests write または issues write 権限が必要です。
     required: false
 
 runs:
@@ -23,15 +23,13 @@ runs:
         # Bootstrap Turbo before discovering test packages.
         filter: .
 
-    - name: Prepare Filter
-      id: filter
+    - id: filter
       uses: ./.github/actions/refine-filter
       with:
         task: test
         filter: ${{ inputs.filter }}
 
-    - name: Run Vitest tests
-      id: tests
+    - id: tests
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
@@ -47,7 +45,7 @@ runs:
         pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
         pnpm exec turbo run test --only "${test_args[@]}" -- --run
 
-    - name: Comment on test failure
+    - name: テスト失敗時のコメント投稿
       if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
       uses: ./.github/actions/comment-result
       with:
@@ -57,4 +55,3 @@ runs:
         status: failure
         body: |
           Vitest unit tests failed during workflow execution. Please check the workflow run logs for detailed failure traces.
-

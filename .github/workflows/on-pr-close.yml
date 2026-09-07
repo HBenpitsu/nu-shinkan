@@ -1,4 +1,4 @@
-name: Clean preview
+name: プレビュー環境の削除
 on:
   pull_request:
     branches: [main]
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: PR whose preview resources should be deleted
+        description: プレビューリソースを削除するプルリクエスト番号
         required: true
         type: string
 permissions:

@@ -1,10 +1,10 @@
-name: Retag By Commit SHA
+name: コミットSHAによるタグ再設定
 
 on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Tag to move.
+        description: 移動する対象タグ
         required: true
         type: choice
         options:
@@ -12,7 +12,7 @@ on:
           - release
         default: staging
       commit_sha:
-        description: Full or short commit SHA to retag.
+        description: 再設定先のコミットSHA（フルまたはショート）
         required: true
         type: string
 
@@ -22,12 +22,11 @@ concurrency:
 
 jobs:
   retag:
-    name: Move tag to commit
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           sparse-checkout: /.github/
@@ -40,12 +39,12 @@ jobs:
           APP_ID: ${{ secrets.RETAG_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
 
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
 
-      - name: Move tag
+      - name: タグの移動
         shell: bash
         env:
           TAG_NAME: ${{ inputs.tag_name }}

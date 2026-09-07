@@ -1,4 +1,4 @@
-name: Review pull request
+name: プルリクエストレビュー
 on:
   pull_request:
     branches: [main]
@@ -23,7 +23,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: ./.github/actions/use-repo
-      - name: Check deployment tooling
+      - name: デプロイメントツールのチェック
         run: |
           pnpm --filter @repo/scripts exec tsc --noEmit
           pnpm --filter @repo/scripts exec vitest run

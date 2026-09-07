@@ -1,10 +1,10 @@
-name: Retag Staging to Branch
+name: stagingタグをブランチの先頭に再設定
 
 on:
   workflow_dispatch:
     inputs:
       branch_name:
-        description: Branch whose latest commit will become staging.
+        description: 最新コミットをstagingにする対象ブランチ
         required: true
         default: main
         type: string
@@ -15,12 +15,11 @@ concurrency:
 
 jobs:
   retag:
-    name: Move staging to branch head
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           sparse-checkout: /.github/
@@ -33,12 +32,12 @@ jobs:
           APP_ID: ${{ secrets.RETAG_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
 
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
 
-      - name: Move staging tag to branch head
+      - name: stagingタグの再設定
         shell: bash
         env:
           BRANCH_NAME: ${{ inputs.branch_name }}

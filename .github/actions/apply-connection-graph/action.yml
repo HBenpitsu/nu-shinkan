@@ -1,19 +1,18 @@
-name: Apply Connection Graph
-description: Select review paths from source package names.
+name: 接続グラフの適用
+description: ソースパッケージ名からレビューパスを選択します。
 inputs:
   sources:
-    description: JSON array of source package names
+    description: ソースパッケージ名のJSON配列
     required: true
 outputs:
   deploy_targets:
-    description: Selected package names as JSON
+    description: 選択されたパッケージ名のJSON
     value: ${{ steps.select.outputs.deploy_targets }}
 runs:
   using: composite
   steps:
     - uses: ./.github/actions/use-repo
-    - name: Select review targets
-      id: select
+    - id: select
       shell: bash
       env:
         SOURCES: ${{ inputs.sources }}

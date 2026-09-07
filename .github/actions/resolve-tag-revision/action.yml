@@ -1,36 +1,35 @@
-name: Resolve Tag Revision
-description: Resolves target tag head and base commit SHAs.
+name: タグリビジョンの解決
+description: 対象タグのHeadおよびBaseコミットSHAを解決します。
 inputs:
   event_name:
-    description: Triggering event name
+    description: トリガーされたイベント名
     required: true
   channel:
-    description: Selected channel name
+    description: 選択されたチャネル名
     required: true
   before:
-    description: Before SHA
+    description: 変更前のSHA
     required: false
   after:
-    description: After SHA
+    description: 変更後のSHA
     required: false
   created:
-    description: Whether tag was created
+    description: タグが新規作成されたかどうか
     required: false
 outputs:
   channel:
-    description: Validated channel
+    description: 検証済みチャネル
     value: ${{ steps.resolve.outputs.channel }}
   head:
-    description: Head commit SHA
+    description: HeadコミットSHA
     value: ${{ steps.resolve.outputs.head }}
   base:
-    description: Base commit SHA
+    description: BaseコミットSHA
     value: ${{ steps.resolve.outputs.base }}
 runs:
   using: composite
   steps:
-    - name: Resolve tag revision
-      id: resolve
+    - id: resolve
       shell: bash
       env:
         EVENT: ${{ inputs.event_name }}

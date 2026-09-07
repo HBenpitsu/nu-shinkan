@@ -1,4 +1,4 @@
-name: Preview command
+name: プレビューコマンド
 on:
   issue_comment:
     types: [created]
@@ -15,7 +15,7 @@ jobs:
       base_sha: ${{ steps.request.outputs.base_sha }}
       pr_number: ${{ steps.request.outputs.pr_number }}
     steps:
-      - name: Authorize comment and fix PR revision
+      - name: コメント権限検証とPRリビジョン取得
         id: request
         uses: actions/github-script@v7
         with:

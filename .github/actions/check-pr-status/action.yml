@@ -1,36 +1,35 @@
-name: Check PR Status
-description: Retrieve and verify state and metadata of a pull request.
+name: PR状態の確認
+description: プルリクエストの状態およびメタデータを取得・検証します。
 
 inputs:
   pr_number:
-    description: Pull request number
+    description: プルリクエスト番号
     required: true
 
 outputs:
   is_open:
-    description: Whether the PR is currently open ("true" or "false")
+    description: PRが現在オープン中かどうか（"true" または "false"）
     value: ${{ steps.check.outputs.is_open }}
   is_same_repo:
-    description: Whether the PR head repository is the same repository ("true" or "false")
+    description: PRのHeadリポジトリが同一リポジトリかどうか（"true" または "false"）
     value: ${{ steps.check.outputs.is_same_repo }}
   is_mergeable:
-    description: Whether the PR has no merge conflicts ("true" or "false")
+    description: PRにマージコンフリクトがないかどうか（"true" または "false"）
     value: ${{ steps.check.outputs.is_mergeable }}
   is_draft:
-    description: Whether the PR is a draft ("true" or "false")
+    description: PRがドラフトかどうか（"true" または "false"）
     value: ${{ steps.check.outputs.is_draft }}
   head_sha:
-    description: Head SHA of the PR
+    description: PRのHeadコミットSHA
     value: ${{ steps.check.outputs.head_sha }}
   base_sha:
-    description: Base SHA of the PR
+    description: PRのBaseコミットSHA
     value: ${{ steps.check.outputs.base_sha }}
 
 runs:
   using: "composite"
   steps:
-    - name: Check PR Status
-      id: check
+    - id: check
       uses: actions/github-script@v7
       env:
         ACTION_PATH: ${{ github.action_path }}

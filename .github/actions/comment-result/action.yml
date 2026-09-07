@@ -1,32 +1,31 @@
-name: Comment Result
-description: Post or update a result comment on a PR or Issue.
+name: 結果コメント
+description: PRまたはIssueに結果コメントを投稿または更新します。
 
 inputs:
   pr_number:
-    description: PR or Issue number
+    description: PRまたはIssue番号
     required: true
   marker:
-    description: Unique marker tag for comment upserting (e.g. ui_test-report)
+    description: コメント更新判定用のユニークマーカータグ（例 ui_test-report）
     required: false
     default: result-comment
   title:
-    description: Comment title
+    description: コメントタイトル
     required: false
   body:
-    description: Comment body content
+    description: コメント本文
     required: false
   status:
-    description: Status string (success, failure, etc.)
+    description: ステータス文字列（success、failure 等）
     required: false
   artifact_url:
-    description: Optional artifact download URL
+    description: オプションのアーティファクトダウンロードURL
     required: false
 
 runs:
   using: "composite"
   steps:
-    - name: Post or Update Comment
-      uses: actions/github-script@v7
+    - uses: actions/github-script@v7
       env:
         ACTION_PATH: ${{ github.action_path }}
         PR_NUMBER: ${{ inputs.pr_number }}

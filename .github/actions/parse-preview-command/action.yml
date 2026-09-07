@@ -1,10 +1,10 @@
-name: Parse Preview Command
+name: プレビューコマンドの解析
 description: |
-  Checks if the users' /preview command is used correctly, 
-  and outputs the picked packages.
+  ユーザーの /preview コマンドが正しく使用されているか確認し、
+  選択されたパッケージを出力します。
 outputs:
   picked:
-    description: Picked packages as JSON
+    description: 選択されたパッケージのJSON
 runs:
   using: node24
   main: main.mjs

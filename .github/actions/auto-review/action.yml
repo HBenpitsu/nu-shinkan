@@ -1,16 +1,15 @@
-name: Auto Review
-description: Perform automated code checks and post a summary review on pull requests.
+name: 自動レビュー
+description: コードの自動チェックを行い、プルリクエストにサマリーレビューを投稿します。
 
 inputs:
   pr_number:
-    description: Pull Request number
+    description: プルリクエスト番号
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Run Automated Review Script
-      uses: actions/github-script@v7
+    - uses: actions/github-script@v7
       env:
         ACTION_PATH: ${{ github.action_path }}
         PR_NUMBER: ${{ inputs.pr_number }}

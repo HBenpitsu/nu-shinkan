@@ -1,12 +1,12 @@
-name: Comment reaction
-description: React when processing starts and after the job succeeds or fails.
+name: コメントリアクション
+description: 処理開始時およびジョブ成功/失敗後にリアクションを追加します。
 inputs:
   token:
-    description: Token with permission to write PR comment reactions
+    description: PRコメントのリアクション書き込み権限を持つトークン
     required: true
     default: ${{ github.token }}
   job-status:
-    description: Job status evaluated when the action runs
+    description: アクション実行時に評価されるジョブステータス
     # The runner evaluates this default again when running post.
     default: ${{ job.status }}
 runs:

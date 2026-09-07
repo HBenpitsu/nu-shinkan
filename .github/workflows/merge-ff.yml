@@ -1,4 +1,4 @@
-name: Merge Fast-Forward
+name: ファストフォワードマージ
 
 on:
   issue_comment:
@@ -6,14 +6,13 @@ on:
 
 jobs:
   merge:
-    name: Merge Fast-Forward
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge-ff')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout workflow actions
+      - name: ワークフローアクションのチェックアウト
         uses: actions/checkout@v4
         with:
           sparse-checkout: /.github/
@@ -21,8 +20,7 @@ jobs:
           persist-credentials: false
 
       # Put reaction early
-      - name: Track comment reaction
-        uses: ./.github/actions/comment-reaction
+      - uses: ./.github/actions/comment-reaction
 
       # The main flow begins here
       - id: use-app
@@ -31,12 +29,11 @@ jobs:
           APP_ID: ${{ secrets.PR_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.PR_APP_PRIVATE_KEY }}
 
-      - name: Checkout workflow actions
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
 
-      - name: Resolve pull request metadata
+      - name: PRメタデータの解決
         id: pr-metadata
         uses: actions/github-script@v7
         with:
@@ -50,7 +47,7 @@ jobs:
 
             core.setOutput('base_ref', pr.base.ref);
 
-      - name: Merge Fast-Forward
+      - name: ファストフォワードマージの実行
         shell: bash
         env:
           PR_NUMBER: ${{ github.event.issue.number }}
@@ -58,7 +55,7 @@ jobs:
         run: |
           original_sha=$(git rev-parse HEAD)
           trap 'git switch --detach "$original_sha"' EXIT
-          
+
           set -euo pipefail
 
           git fetch origin

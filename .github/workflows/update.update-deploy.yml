@@ -1,17 +1,17 @@
-name: Update deploy
+name: 差分更新デプロイ
 on:
   workflow_call:
     inputs:
       head_sha:
-        description: "Fixed deployment SHA"
+        description: "固定デプロイSHA"
         type: string
         required: true
       base_sha:
-        description: "Fixed comparison SHA"
+        description: "固定比較SHA"
         type: string
         required: false
       channel:
-        description: "Deployment channel: staging or release"
+        description: "デプロイチャネル: staging または release"
         type: string
         required: true
 permissions:
@@ -27,7 +27,7 @@ jobs:
           ref: ${{ inputs.head_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Check comparison ancestry
+      - name: 比較対象の祖先コミット確認
         id: check
         uses: actions/github-script@v7
         env:
@@ -64,7 +64,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Validate channel
+      - name: チャネルの検証
         env:
           CHANNEL: ${{ inputs.channel }}
         run: '[[ "$CHANNEL" == staging || "$CHANNEL" == release ]]'
@@ -73,13 +73,13 @@ jobs:
           ref: ${{ inputs.head_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify checkout
+      - name: チェックアウトの検証
         shell: bash
         env:
           HEAD_SHA: ${{ inputs.head_sha }}
         run: test "$(git rev-parse HEAD)" = "$HEAD_SHA"
       - uses: ./.github/actions/use-repo
-      - name: Select changed and affected packages
+      - name: 変更および影響のあるパッケージの選択
         id: selection
         uses: actions/github-script@v7
         env:
@@ -99,19 +99,19 @@ jobs:
             const base = execFileSync('git', ['merge-base', BASE_SHA, HEAD_SHA], {encoding:'utf8'}).trim();
             core.setOutput('changes', JSON.stringify(list([`--filter=[${base}...${HEAD_SHA}]`])));
             core.setOutput('affected', JSON.stringify(list([`--filter=...[${base}...${HEAD_SHA}]`])));
-      - name: Select executable deployment tasks
+      - name: 実行可能なデプロイタスクの選択
         id: filter
         uses: ./.github/actions/refine-filter
         with:
           task: deploy
           filter: ${{ steps.selection.outputs.affected }}
-      - name: Resolve Worker metadata
+      - name: Workerメタデータの解決
         id: targets
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         uses: ./.github/actions/resolve-worker-targets
         with:
           packages: ${{ steps.filter.outputs.packages }}
-      - name: Install selected build dependencies
+      - name: 選択されたビルド依存関係のインストール
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         shell: bash
         env:
@@ -120,23 +120,23 @@ jobs:
         run: |
           mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
           pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
-      - name: Unit tests
+      - name: 単体テスト
         id: unit-tests
         uses: ./.github/actions/vi-test
         with:
           filter: ${{ steps.selection.outputs.changes }}
-      - name: UI tests
+      - name: UIテスト
         id: ui-tests
         uses: ./.github/actions/ui-test
         with:
           filter: ${{ steps.selection.outputs.changes }}
-      - name: Lint changed packages
+      - name: 変更パッケージのLintフィルタリング
         id: lint
         uses: ./.github/actions/refine-filter
         with:
           task: lint
           filter: ${{ steps.selection.outputs.changes }}
-      - name: Run lint
+      - name: Lintの実行
         if: ${{ steps.lint.outputs.has_hit == 'true' }}
         shell: bash
         env:
@@ -147,7 +147,7 @@ jobs:
           mapfile -t deps < <(node -e 'JSON.parse(process.env.DEPS).forEach(arg => console.log(arg))')
           HUSKY=0 pnpm install --frozen-lockfile --prefer-offline "${deps[@]}"
           pnpm exec turbo run lint --only "${args[@]}"
-      - name: Build deployment artifacts
+      - name: デプロイアーティファクトのビルド
         id: build
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         shell: bash
@@ -159,7 +159,7 @@ jobs:
           mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
           pnpm sync "${args[@]}"
           pnpm exec turbo run build "${args[@]}"
-      - name: Deploy selected packages
+      - name: 選択パッケージのデプロイ
         id: deploy
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         uses: actions/github-script@v7
@@ -182,7 +182,7 @@ jobs:
             }
             core.setOutput('results', JSON.stringify(results));
             if (results.some(result => !result.success)) core.setFailed('One or more deployments failed');
-      - name: Summarize results
+      - name: 結果のサマリー作成
         if: ${{ always() }}
         uses: actions/github-script@v7
         env:

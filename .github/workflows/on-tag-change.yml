@@ -1,11 +1,11 @@
-name: Deploy channel
+name: チャネルデプロイ
 on:
   push:
     tags: [staging, release]
   workflow_dispatch:
     inputs:
       channel:
-        description: Channel to deploy in full
+        description: フルデプロイする対象チャネル
         type: choice
         options: [staging, release]
         required: true
