@@ -38,12 +38,19 @@ runs:
         task: ui_test
         filter: ${{ inputs.filter }}
 
+    - name: Cache Playwright Browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
     - name: Run UI Test
       id: tests
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
         HUSKY: 0
+        TEST: PACKAGE
         TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
       run: |
@@ -75,14 +82,11 @@ runs:
 
     - name: Upsert PR or issue comment
       if: ${{ !cancelled() && steps.upload.outputs.artifact-url != '' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
-      uses: actions/github-script@v7
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
-        ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
-        TEST_OUTCOME: ${{ steps.tests.outcome }}
+      uses: ./.github/actions/comment-result
       with:
-        script: |
-          const path = require('node:path');
-          const upsertComment = require(path.join(process.env.ACTION_PATH, 'upsert-comment.cjs'));
-          await upsertComment({ github, context });
+        pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        marker: ui_test-report
+        title: Playwright UI test Report
+        status: ${{ steps.tests.outcome }}
+        artifact_url: ${{ steps.upload.outputs.artifact-url }}
+

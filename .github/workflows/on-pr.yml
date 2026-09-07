@@ -23,10 +23,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
       - uses: ./.github/actions/use-repo
-        with:
-          filter: |
-            .
-            @repo/scripts...
       - name: Check deployment tooling
         run: |
           pnpm --filter @repo/scripts exec tsc --noEmit

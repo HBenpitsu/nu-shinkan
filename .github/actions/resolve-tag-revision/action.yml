@@ -1,0 +1,41 @@
+name: Resolve Tag Revision
+description: Resolves target tag head and base commit SHAs.
+inputs:
+  event_name:
+    description: Triggering event name
+    required: true
+  channel:
+    description: Selected channel name
+    required: true
+  before:
+    description: Before SHA
+    required: false
+  after:
+    description: After SHA
+    required: false
+  created:
+    description: Whether tag was created
+    required: false
+outputs:
+  channel:
+    description: Validated channel
+    value: ${{ steps.resolve.outputs.channel }}
+  head:
+    description: Head commit SHA
+    value: ${{ steps.resolve.outputs.head }}
+  base:
+    description: Base commit SHA
+    value: ${{ steps.resolve.outputs.base }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve tag revision
+      id: resolve
+      shell: bash
+      env:
+        EVENT: ${{ inputs.event_name }}
+        CHANNEL: ${{ inputs.channel }}
+        BEFORE: ${{ inputs.before }}
+        AFTER: ${{ inputs.after }}
+        CREATED: ${{ inputs.created }}
+      run: node "${{ github.action_path }}/resolve-tag.mjs"

@@ -1,0 +1,27 @@
+name: Auto Review
+description: Perform automated code checks and post a summary review on pull requests.
+
+inputs:
+  pr_number:
+    description: Pull Request number
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Automated Review Script
+      uses: actions/github-script@v7
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+      with:
+        script: |
+          const path = require('node:path');
+          const scriptPath = path.join(process.env.ACTION_PATH, 'review.mjs');
+          const { runAutoReview } = await import(`file://${scriptPath}`);
+          await runAutoReview({
+            github,
+            context,
+            core,
+            prNumber: process.env.PR_NUMBER
+          });

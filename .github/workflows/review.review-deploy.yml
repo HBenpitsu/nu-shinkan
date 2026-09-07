@@ -104,17 +104,9 @@ jobs:
       - name: Resolve Worker metadata
         id: targets
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
-        shell: bash
-        env:
-          PACKAGES: ${{ steps.filter.outputs.packages }}
-        run: |
-          node --input-type=module <<'JS'
-          import {execFileSync} from 'node:child_process';
-          import {appendFileSync} from 'node:fs';
-          const names = JSON.parse(process.env.PACKAGES);
-          const targets = JSON.parse(execFileSync('pnpm', ['exec', 'tsx', 'scripts/workspace/configs-cli.ts', '--targets', '--', ...names], {encoding:'utf8'}));
-          appendFileSync(process.env.GITHUB_OUTPUT, `targets=${JSON.stringify(targets)}\n`);
-          JS
+        uses: ./.github/actions/resolve-worker-targets
+        with:
+          packages: ${{ steps.filter.outputs.packages }}
       - name: Install selected build dependencies
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         shell: bash
@@ -211,8 +203,8 @@ jobs:
               process.stderr.write(result.stderr || '');
               if (result.error) core.error(result.error.message);
               const success = result.status === 0 && !result.error;
-              const url = success ? (result.stdout || '').match(/https:\/\/[a-z0-9.-]+\.workers\.dev\b/i)?.[0] : undefined;
-              results.push({package:target.package, success, url});
+              const urlMatches = success ? Array.from(new Set((result.stdout || '').match(/https:\/\/[a-z0-9.-]+\.[a-z]{2,}(?::\d+)?(?:\/[^\s"']*)?/gi) || [])) : [];
+              results.push({package:target.package, success, urls: urlMatches, url: urlMatches[0]});
             }
             core.setOutput('results', JSON.stringify(results));
             if (results.some(result => !result.success)) core.setFailed('One or more deployments failed');
@@ -231,7 +223,10 @@ jobs:
             const steps = JSON.parse(process.env.STEPS);
             const results = JSON.parse(process.env.RESULTS || '[]');
             const url = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-            const rows = results.map(r => `| ${r.package} | ${r.success ? 'success' : 'failure'} | ${r.url || ''} |`);
+            const rows = results.map(r => {
+              const urlList = Array.isArray(r.urls) && r.urls.length > 0 ? r.urls.join('<br>') : (r.url || '');
+              return `| ${r.package} | ${r.success ? 'success' : 'failure'} | ${urlList} |`;
+            });
             const failures = Object.entries(steps).filter(([, s]) => s.outcome === 'failure').map(([name]) => name);
             const operation = steps['final-state']?.outputs?.operation || steps.state?.outputs?.operation;
             const detail = operation && operation !== 'deploy' ? `PR operation: ${operation}.` : results.length ? '' : 'No packages deployed.';

@@ -37,3 +37,12 @@ cleanupは既定ブランチをcheckoutし、各パッケージの `undeploy:pre
 GitHub Environmentsの `preview`、`staging`、`release` に `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を設定する。retag・merge用のutility workflowは既存のGitHub App資格情報を使用する。
 
 `on-pr.yml` のtooling jobでscriptsのテストと型検査を実行する。`nightly.yml` は毎日UTC 00:00に既定ブランチの型検査・全workspaceの単体テスト・UIテストを実行する。ローカルでは外部APIをmockしてPR状態・権限・部分失敗を検証する。GitHub上の排他、Environment権限、Cloudflareへのdeployとcleanupは実環境での確認が必要になる。
+
+## スクリプト記述と Action 切り出し標準
+
+GitHub Actions 内のスクリプト実装および切り出しについては、[ADR: GitHub Actions スクリプト実装ガイドライン](file:///workspaces/nu-shinkan/docs/ADR/workflow-script-guidelines.md) に基いて構成する。
+
+1. **GitHub API / PR・Issue コメント / Output 設定**: `actions/github-script@v7` を使用する。
+2. **Git / ローカルロジック処理**: インラインヒアドキュメント (`<<'JS'`) を避け、対応する GitHub Action 直下に切り出した `.mjs` 補助スクリプトを実行する。
+3. **補助スクリプトの Action 帰属**: 補助スクリプト (`.mjs`) を導入する際は必ず自然な単位での Action 切り出し (`.github/actions/<action-name>/`) を伴う。
+

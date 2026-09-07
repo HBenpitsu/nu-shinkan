@@ -1,0 +1,19 @@
+name: Resolve Worker Targets
+description: Resolves Worker package metadata targets using configs-cli.
+inputs:
+  packages:
+    description: JSON array of package names
+    required: true
+outputs:
+  targets:
+    description: Worker targets metadata as JSON
+    value: ${{ steps.resolve.outputs.targets }}
+runs:
+  using: composite
+  steps:
+    - name: Resolve Worker metadata
+      id: resolve
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: node "${{ github.action_path }}/resolve-targets.mjs"
