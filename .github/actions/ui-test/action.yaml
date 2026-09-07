@@ -52,7 +52,8 @@ runs:
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
         pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
-        pnpm --recursive "${test_args[@]}" exec playwright install --with-deps
+        # Playwright installs shared OS packages via apt; serialize across workspaces.
+        pnpm exec turbo run ui_test:prepare --concurrency=1 --only "${test_args[@]}"
         pnpm exec turbo run ui_test --only "${test_args[@]}"
 
     - name: Collect UI test reports
