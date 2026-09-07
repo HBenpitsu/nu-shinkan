@@ -41,7 +41,9 @@ function parsePrNumber(
 }
 
 function parseTargets(value: string | undefined): ReadonlyMap<string, Target> {
-  const targets: unknown = JSON.parse(value ?? "[]");
+  if (value === undefined)
+    throw new Error("TARGETS is required; use [] for an empty selection");
+  const targets: unknown = JSON.parse(value);
   if (
     !Array.isArray(targets) ||
     targets.some(

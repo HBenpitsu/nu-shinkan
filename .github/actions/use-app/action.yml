@@ -1,5 +1,5 @@
-name: Use Github App
-description: Checkout Repository with Github App credentials
+name: Repository Setup with GitHub App
+description: Checkout Repository with GitHub App credentials
 
 inputs:
   APP_ID:
@@ -8,7 +8,10 @@ inputs:
   APP_PRIVATE_KEY:
     description: GitHub App private key.
     required: true
-
+outputs:
+  TOKEN: 
+    description: GitHub App token for the repository.
+    value: ${{ steps.app-token.outputs.token }}
 runs:
   using: "composite"
   steps:
@@ -38,9 +41,3 @@ runs:
         private-key: ${{ inputs.APP_PRIVATE_KEY }}
         owner: ${{ github.repository_owner }}
         repositories: ${{ github.event.repository.name }}
-
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ steps.app-token.outputs.token }}

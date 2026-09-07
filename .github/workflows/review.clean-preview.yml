@@ -1,0 +1,76 @@
+name: Clean preview Workers
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: Pull request number
+        type: number
+        required: true
+      manual:
+        description: Explicit cleanup request, including an open PR
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: preview-pr-${{ inputs.pr_number }}
+  queue: single
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: preview
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check current PR state
+        id: state
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          MANUAL: ${{ inputs.manual }}
+        with:
+          script: |
+            const number = Number(process.env.PR_NUMBER);
+            if (!Number.isSafeInteger(number) || number <= 0) throw Error('Invalid PR number');
+            const {data:pr} = await github.rest.pulls.get({...context.repo, pull_number:number});
+            core.setOutput('operation', pr.state === 'closed' || process.env.MANUAL === 'true' ? 'cleanup' : 'skip');
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Delete PR Workers
+        id: cleanup
+        if: ${{ steps.state.outputs.operation == 'cleanup' }}
+        uses: ./.github/actions/preview-cleanup
+        with:
+          pr_number: ${{ inputs.pr_number }}
+      - name: Summarize cleanup
+        if: ${{ always() }}
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          STEPS: ${{ toJSON(steps) }}
+          RESULTS: "[]"
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const steps = JSON.parse(process.env.STEPS);
+            const results = JSON.parse(process.env.RESULTS || '[]');
+            const url = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const rows = results.map(r => `| ${r.package} | ${r.success ? 'success' : 'failure'} | ${r.url || ''} |`);
+            const failures = Object.entries(steps).filter(([, s]) => s.outcome === 'failure').map(([name]) => name);
+            const operation = steps['final-state']?.outputs?.operation || steps.state?.outputs?.operation;
+            const detail = operation && operation !== 'deploy' ? `PR operation: ${operation}.` : results.length ? '' : 'No packages deployed.';
+            const body = [`### ${process.env.DEPLOY_CHANNEL || 'preview cleanup'}: ${process.env.JOB_STATUS}`,
+              detail, `Commit: ${process.env.HEAD_SHA || 'default branch'}`, `[Actions run](${url})`,
+              failures.length ? `Failed steps: ${failures.join(', ')}` : '',
+              '| Package | Result | URL |', '| --- | --- | --- |', ...rows].filter(Boolean).join('\n');
+            await core.summary.addRaw(body).write();
+            if (process.env.PR_NUMBER) {
+              try {
+                await github.rest.issues.createComment({...context.repo, issue_number:Number(process.env.PR_NUMBER), body});
+              } catch (error) { core.warning(`Unable to notify PR: ${error.message}`); }
+            }

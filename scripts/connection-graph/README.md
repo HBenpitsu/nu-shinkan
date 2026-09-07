@@ -1,6 +1,6 @@
 # Connection graph
 
-[デプロイ設計](../../docs/discussion/deploy-design.md#review-に共通の-connection-グラフ)の review 用対象選定を、独立した CLI として提供する。リポジトリルートで実行する。
+[デプロイ設計](../../docs/ADR/deploy-design.md#review-に共通の-connection-グラフ)の review 用対象選定を、独立した CLI として提供する。リポジトリルートで実行する。
 
 キャッシュ可能性を考慮し，エントリーポイントとして，`build.ts`と`select.ts`を提供している．
 
@@ -45,12 +45,12 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 起点には呼び出し側でパッケージ依存関係による影響先まで含める。差分検出・manual-pick の受付・`scripts.deploy` による実行対象の絞り込みは呼び出し側の責務とする。
 
-`scripts/deploy/graph.ts` も両 CLI を実行して JSON を受け渡す。`graph.ts` はツール内部の実装であり、外部向けの import API ではない。
+`.github/actions/apply-connection-graph` が両CLIをパイプ用の入出力で接続し、選定されたパッケージ名をJSONのaction出力へ渡す。内部の `graph.ts` は外部向けのimport APIではない。
 
 ## 内部構成
 
 `ConnectionGraph` はグラフデータと探索を保持する。`fromDeployments(packages, deployments)` で構築し、`fromJSON(value)` で検証・復元する。`selectReviewTargets(sources)` がreview対象を返し、`toJSON()` は `{ packages, edges, reviewEntries }` を返す。
 
-接続先（destinations）・呼び出し元（callers）の隣接リストは構築時に一度だけ生成する。入力・返却データをコピーし、外部からの変更で探索結果が変わらないようにする。workspace列挙とdeploymentファイルの読み取りは `build.ts`、入力JSONの読み取りと引数検証は `select.ts` が担当する。
+接続先（destinations）・呼び出し元（callers）の隣接リストは構築時に一度だけ生成する。入力・返却データをコピーし、外部からの変更で探索結果が変わらないようにする。workspace設定の収集は `workspace/configs.ts`、deploymentファイルの読み取りは `build.ts`、入力JSONの読み取りと引数検証は `select.ts` が担当する。
 
 グラフはパッケージ名だけをノードとして保持し、pathやWorker名は持たない。計画側が選定された名前をworkspaceのパッケージ情報に対応づけ、Worker名を付与して最終的なtargetsを作る。

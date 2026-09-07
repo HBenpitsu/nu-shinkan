@@ -6,7 +6,7 @@ inputs:
     description: Test context. Test results that share the same context will be cached.
     required: false
   filter:
-    description: A single Turbo filter expression for UI tests
+    description: Turbo filters as text or a JSON array; [] selects no UI tests
     required: false
   pr_number:
     description: |
@@ -25,8 +25,7 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Setup
-      uses: ./.github/actions/use-repo
+    - uses: ./.github/actions/use-repo
       with:
         context: ${{ inputs.context }}
         # Bootstrap Turbo before discovering UI test packages.
@@ -41,19 +40,20 @@ runs:
 
     - name: Run UI Test
       id: tests
-      if: ${{ steps.filter.outputs.has_tests == 'true' }}
+      if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
         HUSKY: 0
-        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
-        INSTALL_ARGS: ${{ steps.filter.outputs.deps_args }}
+        TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
+        DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
       run: |
         mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
-        mapfile -t install_args < <(node -e 'JSON.parse(process.env.INSTALL_ARGS).forEach(arg => console.log(arg))')
+        mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm ui_test:prepare "${test_args[@]}"
-        pnpm ui_test "${test_args[@]}" -- --run
+        pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
+        pnpm --recursive "${test_args[@]}" exec playwright install --with-deps
+        pnpm exec turbo run ui_test --only "${test_args[@]}"
 
     - name: Collect UI test reports
       id: collect

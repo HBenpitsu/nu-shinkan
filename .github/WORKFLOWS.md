@@ -1,34 +1,39 @@
-# GitHub Actions の構成
+# GitHub Actionsの構成
 
-開発中の CI/CD 構成。配置・責務の方針は [deploy workflow の整理方針](../docs/discussion/deploy-workflow-organization.md) を参照する。
+イベントを受け付けるworkflowから、用途別の再利用workflowを呼ぶ。デプロイは固定したSHAをcheckoutし、そのコミットの設定・スクリプトを使う。
 
-## トリガーと処理
+| 受付                | 再利用workflow             | 処理                                                      |
+| ------------------- | -------------------------- | --------------------------------------------------------- |
+| `on-tag-change.yml` | `update.full-deploy.yml`   | staging/releaseの初回タグ作成、手動full                   |
+| `on-tag-change.yml` | `update.update-deploy.yml` | タグ更新の差分と依存関係による影響先。比較不能ならfull    |
+| `on-pr.yml`         | `review.review-deploy.yml` | main向けPRの差分、依存関係、connection graphによるpreview |
+| `on-pr-comment.yml` | `review.pick-deploy.yml`   | `/preview <package-name> ...` の指定と影響先からpreview   |
+| `on-pr-close.yml`   | `review.clean-preview.yml` | PR close、またはPR番号を指定した手動cleanup               |
 
-| Workflow | 処理 |
-| --- | --- |
-| `on-tag-change.yml` | 手動実行・初回タグは `full-deploy`、既存 staging/release タグの更新は `update-deploy` |
-| `on-pr.yml` | 通常 PR は `review-deploy`、コメント受付からの内部 dispatch は `pick-deploy` |
-| `on-pr-comment.yml` | `/preview` を解析し、権限を確認して PR の SHA と指定名を固定し内部 dispatch |
-| `on-pr-close.yml` | PR 状態を確認し、`preview-prune` で削除 |
+コメント受付はrepositoryへのwrite権限と、同じrepositoryのopen PRであることを確認し、head/base SHAを固定する。pickはそのhead上で指定名をTurboの一覧と照合する。フィルタ式や空指定は受け付けない。通常のpreviewもfork PRでは実行しない。
 
-full/update は channel 単位、review/pick/cleanup は PR 単位で排他を共有する。checkout は受付時に確定した SHA を使う。preview は実行開始時と deploy 直前に PR 状態を再確認する。
+## 選定と実行
 
-## Deploy actions
+fullは全件、diffは直接変更されたパッケージ、pickは指定パッケージをテスト対象にする。デプロイ対象は依存関係による影響先まで含め、review/pickではさらにconnection graphでreview入口からの利用経路を選ぶ。
 
-- `full-deploy`：channel のみを受け取り、設定準備後に全件 test → build → deploy。対象選定ステップは持たない。
-- `update-deploy`：差分と依存関係で対象を選び、比較不能時は全件にフォールバックする。
-- `review-deploy`：PR 差分の影響先と connection graph から対象を選ぶ。
-- `pick-deploy`：ルート依存の準備後に Turbo の一覧と指定名を照合し、影響先と connection graph から対象を選ぶ。
+`refine-filter` は指定タスクを持つパッケージだけに絞り、`packages`、依存を含むインストール引数 `deps_args`、正確な実行引数 `affected_args`、`has_hit` を出力する。名前に反して `affected_args` は影響先を再展開しない。空文字は全件、JSONの `[]` は空対象であり、空対象を全件へ展開しない。
 
-対象選定は各 action の `plan.mjs`、Worker 情報との対応付けは `scripts/deploy/targets.ts`、実行と結果集計は `scripts/deploy/run.ts`・`results.ts` が担当する。統合 CLI は使用しない。
+`workspace/configs-cli.ts --targets` が選定対象へpathとWorker基底名を付与する。その結果を `TARGETS` に保持し、設定同期・build・deployへ渡す。テストactionは各対象の依存を準備するため、同じ作業領域でのインストール競合を避けて順番に実行する。UIテストはPlaywrightブラウザを導入して実行し、HTMLレポートをartifactへ保存する。
 
-## 補助処理
+準備に失敗した場合はdeployしない。デプロイ対象が空でもテスト対象があればテストする。空対象は通常は成功扱いだが、pickではデプロイ可能な対象がなければ失敗とする。各deployをTurbo経由で実行し、一部が失敗しても残りの対象を試行し、最終結果を失敗にする。
 
-- `use-repo`：Node/pnpm と依存の準備。
-- `refine-filter`：タスクを持つパッケージを調べ、実行引数と依存インストール引数を出力。`vi-test`・`ui-test` が利用する。
-- `preview-prune`：各パッケージの `preview:prune` を Turbo で実行。PR 番号は必須。削除処理は自身の PR Worker を force で削除し、API の Worker 不存在を成功扱いにする。
-- `deploy-notify/notify.mjs`：結果を `GITHUB_STEP_SUMMARY` と PR コメントへ出力。通知失敗はログへ記録する。
+## 排他とPR状態
 
-通常ログは Actions ログで確認する。再通知 workflow と deploy ログの artifact 保存は廃止した。HTML の UI テストレポートは artifact に保存する。
+full/updateは `deploy-channel-<channel>` でFIFOの待機列を共有する。updateの比較不能時はfullへ処理を渡し、同じロックを二重取得しない。review/pick/cleanupは `preview-pr-<number>` を共有し、実行中をキャンセルせず待機中の最新一件を保持する。
 
-既存の retag・merge 用 utility workflow は維持する。実環境での dispatch、排他、Cloudflare deploy/cleanup はローカル検証とは別に確認する。
+previewは実行開始時とdeploy直前にPR状態を確認する。head/baseが変わった要求はskipし、閉じたPRはcleanupへ進む。close受付後にreopenされたPRのcleanupはskipする。手動cleanupはopen PRも明示的に削除できる。
+
+cleanupは既定ブランチをcheckoutし、各パッケージの `undeploy:preview` をTurboで実行する。PR番号を正の整数として検証し、自身のPR Workerだけをforce削除する。WranglerのWorker／legacy environment不存在は成功扱いとし、一時的な失敗は最大3回試行する。削除・改名されて既定ブランチに存在しない過去のパッケージは、この方式では回収できない。
+
+## 結果と準備
+
+各workflowの最後に、成否、失敗ステップ、パッケージごとのdeploy結果、取得できたWorker URL、Actions runへのリンクをSummaryへ出力する。previewはPRへも通知する。通知失敗は警告として記録する。詳細ログはActionsで確認する。
+
+GitHub Environmentsの `preview`、`staging`、`release` に `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を設定する。retag・merge用のutility workflowは既存のGitHub App資格情報を使用する。
+
+`on-pr.yml` のtooling jobでscriptsのテストと型検査を実行する。`nightly.yml` は毎日UTC 00:00に既定ブランチの型検査・全workspaceの単体テスト・UIテストを実行する。ローカルでは外部APIをmockしてPR状態・権限・部分失敗を検証する。GitHub上の排他、Environment権限、Cloudflareへのdeployとcleanupは実環境での確認が必要になる。

@@ -13,10 +13,11 @@ runs:
   using: "composite"
   steps:
       - name: Setup pnpm
+        if: env.REPO_SETUP_DONE != 'true'
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
-        id: setup-node
+        if: env.REPO_SETUP_DONE != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -24,7 +25,7 @@ runs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Restore node_modules cache
-        id: cache-node-modules
+        if: env.REPO_SETUP_DONE != 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -32,14 +33,8 @@ runs:
             !node_modules/.cache/turbo
           key: node-modules-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Print Cache Status
-        shell: bash
-        run: |
-          echo "setup-node cache-hit: ${{ steps.setup-node.outputs.cache-hit }}"
-          echo "node_modules cache-hit: ${{ steps.cache-node-modules.outputs.cache-hit }}"
-
       - name: Interpret Context
-        id: context
+        if: env.REPO_SETUP_DONE != 'true'
         shell: bash
         env:
           SHA: ${{ github.sha }}
@@ -53,6 +48,7 @@ runs:
           echo "CONTEXT=$CONTEXT" >> $GITHUB_ENV
           
       - name: Prepare Turbo Cache
+        if: env.REPO_SETUP_DONE != 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -74,3 +70,7 @@ runs:
 
           pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
 
+      - name: Mark setup complete
+        if: env.REPO_SETUP_DONE != 'true'
+        shell: bash
+        run: echo "REPO_SETUP_DONE=true" >> "$GITHUB_ENV"

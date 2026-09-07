@@ -43,40 +43,20 @@ jobs:
           const source=EVENT==='workflow_dispatch'||CREATED==='true'?'full':'diff';
           appendFileSync(process.env.GITHUB_OUTPUT,`channel=${CHANNEL}\nhead=${head}\nbase=${BEFORE??''}\nsource=${source}\n`);
           JS
-  deploy:
+  full-deploy:
     needs: receive
-    runs-on: ubuntu-latest
-    environment: ${{ needs.receive.outputs.channel }}
-    concurrency:
-      group: deploy-channel-${{ needs.receive.outputs.channel }}
-      queue: max
-      cancel-in-progress: false
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.receive.outputs.head }}
-          fetch-depth: ${{ needs.receive.outputs.source == 'diff' && '0' || '1' }}
-      - id: full
-        if: ${{ needs.receive.outputs.source == 'full' }}
-        uses: ./.github/actions/full-deploy
-        with:
-          channel: ${{ needs.receive.outputs.channel }}
-      - id: update
-        if: ${{ needs.receive.outputs.source == 'diff' }}
-        uses: ./.github/actions/update-deploy
-        with:
-          channel: ${{ needs.receive.outputs.channel }}
-          head_sha: ${{ needs.receive.outputs.head }}
-          base_sha: ${{ needs.receive.outputs.base }}
-      - name: Summarize
-        if: ${{ always() }}
-        env:
-          DEPLOY_CHANNEL: ${{ needs.receive.outputs.channel }}
-          HEAD_SHA: ${{ needs.receive.outputs.head }}
-          JOB_STATUS: ${{ job.status }}
-          STEPS: ${{ toJSON(steps) }}
-          RESULTS: ${{ steps.full.outputs.results || steps.update.outputs.results || '[]' }}
-        run: node .github/actions/deploy-notify/notify.mjs
+    if: ${{ needs.receive.outputs.source == 'full' }}
+    uses: ./.github/workflows/update.full-deploy.yml
+    secrets: inherit
+    with:
+      channel: ${{ needs.receive.outputs.channel }}
+      head_sha: ${{ needs.receive.outputs.head }}
+  update-deploy:
+    needs: receive
+    if: ${{ needs.receive.outputs.source == 'diff' }}
+    uses: ./.github/workflows/update.update-deploy.yml
+    secrets: inherit
+    with:
+      channel: ${{ needs.receive.outputs.channel }}
+      head_sha: ${{ needs.receive.outputs.head }}
+      base_sha: ${{ needs.receive.outputs.base }}

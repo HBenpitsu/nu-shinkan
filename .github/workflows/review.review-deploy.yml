@@ -1,0 +1,247 @@
+name: Review deploy
+on:
+  workflow_call:
+    inputs:
+      head_sha:
+        description: "Fixed deployment SHA"
+        type: string
+        required: true
+      base_sha:
+        description: "Fixed comparison SHA"
+        type: string
+        required: true
+      pr_number:
+        description: "Pull request number"
+        type: number
+        required: true
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: preview-pr-${{ inputs.pr_number }}
+  queue: single
+  cancel-in-progress: false
+jobs:
+  review-deploy:
+    runs-on: ubuntu-latest
+    environment: preview
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check current PR state
+        id: state
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const number = Number(process.env.PR_NUMBER);
+            if (!Number.isSafeInteger(number) || number <= 0) throw Error('Invalid PR number');
+            if (!/^[0-9a-f]{40}$/.test(process.env.HEAD_SHA)) throw Error('Invalid head SHA');
+            const { data: pr } = await github.rest.pulls.get({...context.repo, pull_number: number});
+            const operation = pr.state === 'closed' ? 'cleanup'
+              : pr.head.repo?.full_name === process.env.GITHUB_REPOSITORY && pr.head.sha === process.env.HEAD_SHA && pr.base.sha === process.env.BASE_SHA ? 'deploy' : 'skip';
+            core.setOutput('operation', operation);
+            core.info(`PR #${number}: ${operation}`);
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify checkout
+        shell: bash
+        env:
+          HEAD_SHA: ${{ inputs.head_sha }}
+        run: test "$(git rev-parse HEAD)" = "$HEAD_SHA"
+      - name: Clean closed PR
+        if: ${{ steps.state.outputs.operation == 'cleanup' }}
+        uses: ./.github/actions/preview-cleanup
+        with:
+          pr_number: ${{ inputs.pr_number }}
+      - if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/use-repo
+        with:
+          filter: |
+            .
+            @repo/scripts...
+      - name: Select changed and affected packages
+        id: selection
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: actions/github-script@v7
+        env:
+          HEAD_SHA: ${{ inputs.head_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const { execFileSync } = require('node:child_process');
+            const list = (filters = []) => {
+              const value = JSON.parse(execFileSync('pnpm', ['exec', 'turbo', 'ls', '--output=json', ...filters], {encoding:'utf8'}));
+              if (!Array.isArray(value?.packages?.items)) throw Error('Invalid Turbo package listing');
+              return value.packages.items.map(pkg => pkg.name);
+            };
+
+            const { BASE_SHA, HEAD_SHA } = process.env;
+            if (![BASE_SHA, HEAD_SHA].every(sha => /^[0-9a-f]{40}$/.test(sha))) throw Error('Invalid comparison SHA');
+            const base = execFileSync('git', ['merge-base', BASE_SHA, HEAD_SHA], {encoding:'utf8'}).trim();
+            core.setOutput('changes', JSON.stringify(list([`--filter=[${base}...${HEAD_SHA}]`])));
+            core.setOutput('affected', JSON.stringify(list([`--filter=...[${base}...${HEAD_SHA}]`])));
+      - name: Select review paths
+        id: graph
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/apply-connection-graph
+        with:
+          sources: ${{ steps.selection.outputs.affected }}
+      - name: Select executable deployment tasks
+        id: filter
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/refine-filter
+        with:
+          task: deploy
+          filter: ${{ steps.graph.outputs.deploy_targets }}
+      - name: Resolve Worker metadata
+        id: targets
+        if: ${{ steps.filter.outputs.has_hit == 'true' }}
+        shell: bash
+        env:
+          PACKAGES: ${{ steps.filter.outputs.packages }}
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          import {appendFileSync} from 'node:fs';
+          const names = JSON.parse(process.env.PACKAGES);
+          const targets = JSON.parse(execFileSync('pnpm', ['exec', 'tsx', 'scripts/workspace/configs-cli.ts', '--targets', '--', ...names], {encoding:'utf8'}));
+          appendFileSync(process.env.GITHUB_OUTPUT, `targets=${JSON.stringify(targets)}\n`);
+          JS
+      - name: Install selected build dependencies
+        if: ${{ steps.filter.outputs.has_hit == 'true' }}
+        shell: bash
+        env:
+          HUSKY: 0
+          FILTER: ${{ steps.filter.outputs.deps_args }}
+        run: |
+          mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
+          pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
+      - name: Unit tests
+        id: unit-tests
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/vi-test
+        with:
+          filter: ${{ steps.selection.outputs.changes }}
+          pr_number: ${{ inputs.pr_number }}
+      - name: UI tests
+        id: ui-tests
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/ui-test
+        with:
+          filter: ${{ steps.selection.outputs.changes }}
+          pr_number: ${{ inputs.pr_number }}
+      - name: Lint changed packages
+        id: lint
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: ./.github/actions/refine-filter
+        with:
+          task: lint
+          filter: ${{ steps.selection.outputs.changes }}
+      - name: Run lint
+        if: ${{ steps.lint.outputs.has_hit == 'true' }}
+        shell: bash
+        env:
+          FILTER: ${{ steps.lint.outputs.affected_args }}
+          DEPS: ${{ steps.lint.outputs.deps_args }}
+        run: |
+          mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
+          mapfile -t deps < <(node -e 'JSON.parse(process.env.DEPS).forEach(arg => console.log(arg))')
+          HUSKY=0 pnpm install --frozen-lockfile --prefer-offline "${deps[@]}"
+          pnpm exec turbo run lint --only "${args[@]}"
+      - name: Build deployment artifacts
+        id: build
+        if: ${{ steps.filter.outputs.has_hit == 'true' }}
+        shell: bash
+        env:
+          DEPLOY_CHANNEL: preview
+          PR_NUMBER: ${{ inputs.pr_number }}
+          TARGETS: ${{ steps.targets.outputs.targets }}
+          FILTER: ${{ steps.filter.outputs.deps_args }}
+        run: |
+          mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
+          pnpm sync "${args[@]}"
+          pnpm exec turbo run build "${args[@]}"
+      - name: Recheck PR before deployment
+        id: final-state
+        if: ${{ steps.state.outputs.operation == 'deploy' }}
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          BASE_SHA: ${{ inputs.base_sha }}
+        with:
+          script: |
+            const number = Number(process.env.PR_NUMBER);
+            if (!Number.isSafeInteger(number) || number <= 0) throw Error('Invalid PR number');
+            if (!/^[0-9a-f]{40}$/.test(process.env.HEAD_SHA)) throw Error('Invalid head SHA');
+            const { data: pr } = await github.rest.pulls.get({...context.repo, pull_number: number});
+            const operation = pr.state === 'closed' ? 'cleanup'
+              : pr.head.repo?.full_name === process.env.GITHUB_REPOSITORY && pr.head.sha === process.env.HEAD_SHA && pr.base.sha === process.env.BASE_SHA ? 'deploy' : 'skip';
+            core.setOutput('operation', operation);
+            core.info(`PR #${number}: ${operation}`);
+      - name: Clean PR closed during preparation
+        if: ${{ steps.final-state.outputs.operation == 'cleanup' }}
+        uses: ./.github/actions/preview-cleanup
+        with:
+          pr_number: ${{ inputs.pr_number }}
+      - name: Deploy selected packages
+        id: deploy
+        if: ${{ steps.filter.outputs.has_hit == 'true' && steps.final-state.outputs.operation == 'deploy' }}
+        uses: actions/github-script@v7
+        env:
+          TARGETS: ${{ steps.targets.outputs.targets }}
+          DEPLOY_CHANNEL: preview
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const { spawnSync } = require('node:child_process');
+            const targets = JSON.parse(process.env.TARGETS);
+            const results = [];
+            for (const target of targets) {
+              const result = spawnSync('pnpm', ['exec', 'turbo', 'run', 'deploy', '--only', `--filter=${target.package}`], {encoding:'utf8', maxBuffer: 16 * 1024 * 1024});
+              process.stdout.write(result.stdout || '');
+              process.stderr.write(result.stderr || '');
+              if (result.error) core.error(result.error.message);
+              const success = result.status === 0 && !result.error;
+              const url = success ? (result.stdout || '').match(/https:\/\/[a-z0-9.-]+\.workers\.dev\b/i)?.[0] : undefined;
+              results.push({package:target.package, success, url});
+            }
+            core.setOutput('results', JSON.stringify(results));
+            if (results.some(result => !result.success)) core.setFailed('One or more deployments failed');
+      - name: Summarize results
+        if: ${{ always() }}
+        uses: actions/github-script@v7
+        env:
+          JOB_STATUS: ${{ job.status }}
+          STEPS: ${{ toJSON(steps) }}
+          RESULTS: ${{ steps.deploy.outputs.results || '[]' }}
+          HEAD_SHA: ${{ inputs.head_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          DEPLOY_CHANNEL: preview
+        with:
+          script: |
+            const steps = JSON.parse(process.env.STEPS);
+            const results = JSON.parse(process.env.RESULTS || '[]');
+            const url = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const rows = results.map(r => `| ${r.package} | ${r.success ? 'success' : 'failure'} | ${r.url || ''} |`);
+            const failures = Object.entries(steps).filter(([, s]) => s.outcome === 'failure').map(([name]) => name);
+            const operation = steps['final-state']?.outputs?.operation || steps.state?.outputs?.operation;
+            const detail = operation && operation !== 'deploy' ? `PR operation: ${operation}.` : results.length ? '' : 'No packages deployed.';
+            const body = [`### ${process.env.DEPLOY_CHANNEL || 'preview cleanup'}: ${process.env.JOB_STATUS}`,
+              detail, `Commit: ${process.env.HEAD_SHA || 'default branch'}`, `[Actions run](${url})`,
+              failures.length ? `Failed steps: ${failures.join(', ')}` : '',
+              '| Package | Result | URL |', '| --- | --- | --- |', ...rows].filter(Boolean).join('\n');
+            await core.summary.addRaw(body).write();
+            if (process.env.PR_NUMBER) {
+              try {
+                await github.rest.issues.createComment({...context.repo, issue_number:Number(process.env.PR_NUMBER), body});
+              } catch (error) { core.warning(`Unable to notify PR: ${error.message}`); }
+            }

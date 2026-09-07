@@ -7,9 +7,7 @@ on:
 jobs:
   merge:
     name: Merge Fast-Forward
-    if: >
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/merge-ff')
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge-ff')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,15 +23,18 @@ jobs:
       # Put reaction early
       - name: Track comment reaction
         uses: ./.github/actions/comment-reaction
-        with:
-          token: ${{ github.token }}
 
       # The main flow begins here
-      - name: Use GitHub App
+      - id: use-app
         uses: ./.github/actions/use-app
         with:
           APP_ID: ${{ secrets.PR_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.PR_APP_PRIVATE_KEY }}
+
+      - name: Checkout workflow actions
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.use-app.outputs.TOKEN }}
 
       - name: Resolve pull request metadata
         id: pr-metadata

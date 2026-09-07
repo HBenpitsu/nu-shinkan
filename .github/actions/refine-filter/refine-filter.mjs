@@ -1,47 +1,55 @@
 import { execFileSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
+import { normalizeFilterInput } from "./normalize-filter-input.mjs";
 
-const task = process.env.TASK;
-
-// Preserve the requested test scope; only installation is narrowed below.
-const testArgs = (process.env.FILTER ?? "")
-  .split("\n")
-  .filter(Boolean)
-  .map((filter) => `--filter=${filter}`);
-
-const dryRun = execFileSync(
-  "pnpm",
-  ["exec", "turbo", "run", task, "--dry=json", ...testArgs],
-  { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
-);
-const { tasks } = JSON.parse(dryRun);
-// Turbo also lists dependency tasks whose packages have no matching script.
-const packagesHavingTheTask = [
+const task = process.env.INPUT_TASK;
+if (!task || !/^[\w:-]+$/.test(task))
+  throw new Error("A valid task input is required");
+const filter = process.env.INPUT_FILTER ?? "";
+const filters = normalizeFilterInput(filter);
+const explicitEmpty = filter.trim() !== "" && filters.length === 0;
+const tasks = explicitEmpty
+  ? []
+  : JSON.parse(
+      execFileSync(
+        "pnpm",
+        [
+          "exec",
+          "turbo",
+          "run",
+          task,
+          "--dry=json",
+          "--only",
+          ...filters.map((filter) => `--filter=${filter}`),
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] },
+      ),
+    ).tasks;
+if (!Array.isArray(tasks)) throw new Error("Invalid Turbo task output");
+const packages = [
   ...new Set(
     tasks
       .filter(
-        (task) =>
-          task.task === process.env.TASK && task.command !== "<NONEXISTENT>",
+        (entry) =>
+          entry.task === task &&
+          typeof entry.command === "string" &&
+          entry.command !== "<NONEXISTENT>",
       )
-      .map((task) => task.package),
+      .map((entry) => {
+        if (typeof entry.package !== "string" || !entry.package)
+          throw new Error("Invalid Turbo package");
+        return entry.package;
+      }),
   ),
 ];
-
-// The trailing ... includes workspace dependencies required by each package.
-const installArgs = packagesHavingTheTask.map((pkg) => `--filter=${pkg}...`);
-const hasTests = packagesHavingTheTask.length > 0;
-
-if (!hasTests) {
-  console.log("No packages with the requested task matched the filter.");
-}
-
-// JSON preserves argument boundaries when passing arrays between action steps.
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   [
-    `direct_args=${JSON.stringify(testArgs)}`,
-    `deps_args=${JSON.stringify(installArgs)}`,
-    `has_tests=${hasTests}`,
+    `packages=${JSON.stringify(packages)}`,
+    `deps_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}...`))}`,
+    // Consumers have already selected affected packages; do not expand again.
+    `affected_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}`))}`,
+    `has_hit=${packages.length > 0}`,
     "",
   ].join("\n"),
 );

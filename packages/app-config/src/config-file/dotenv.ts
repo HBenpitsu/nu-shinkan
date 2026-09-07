@@ -72,7 +72,11 @@ export class Dotenv {
   genDeployment(): void {
     mkdirSync(dirname(this.gen), { recursive: true });
     const content = Object.entries(this.variables)
-      .map(([key, value]) => `VITE_${key}=${value}`)
+      .map(([key, value]) => {
+        // Native values may already be quoted; preserve their dotenv syntax.
+        const quoted = /^("|')[\s\S]*\1$/.test(value);
+        return `VITE_${key}=${quoted ? value : JSON.stringify(value)}`;
+      })
       .join("\n");
     writeFileSync(this.gen, content, "utf-8");
   }

@@ -1,126 +1,33 @@
-name: On Pull Request to main branch
+name: Review pull request
 on:
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize]
-  workflow_dispatch:
-    inputs:
-      pr_number:
-        description: Internal request PR number
-        required: true
-        type: string
-      head_sha:
-        description: Head SHA fixed by comment receiver
-        required: true
-        type: string
-      base_sha:
-        description: Base SHA fixed by comment receiver
-        required: true
-        type: string
-      picks:
-        description: JSON array of exact package names
-        required: true
-        type: string
-concurrency:
-  group: preview-pr-${{ github.event.pull_request.number || inputs.pr_number }}
-  queue: single
-  cancel-in-progress: false
 permissions:
   contents: read
   pull-requests: write
-  actions: read
 jobs:
   preview:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
-    runs-on: ubuntu-latest
-    environment: preview
-    outputs:
-      changes: ${{ steps.review.outputs.changes || steps.pick.outputs.changes }}
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
-      BASE_SHA: ${{ github.event.pull_request.base.sha || inputs.base_sha }}
-      SELECTION_SOURCE: ${{ github.event_name == 'workflow_dispatch' && 'manual-pick' || 'diff' }}
-      PICKS: ${{ inputs.picks || '[]' }}
-      DEPLOY_CHANNEL: preview
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-    steps:
-      - id: checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.HEAD_SHA }}
-          fetch-depth: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - id: state
-        name: Check current PR state
-        run: node .github/scripts/pr-state.mjs
-      - id: review
-        if: ${{ steps.state.outputs.operation == 'deploy' && github.event_name == 'pull_request' }}
-        uses: ./.github/actions/review-deploy
-        with:
-          head_sha: ${{ env.HEAD_SHA }}
-          base_sha: ${{ env.BASE_SHA }}
-          pr_number: ${{ env.PR_NUMBER }}
-      - id: pick
-        if: ${{ steps.state.outputs.operation == 'deploy' && github.event_name == 'workflow_dispatch' }}
-        uses: ./.github/actions/pick-deploy
-        with:
-          head_sha: ${{ env.HEAD_SHA }}
-          base_sha: ${{ env.BASE_SHA }}
-          pr_number: ${{ env.PR_NUMBER }}
-          picks: ${{ env.PICKS }}
-      - name: Clean closed PR
-        if: ${{ steps.state.outputs.operation == 'cleanup' }}
-        uses: ./.github/actions/preview-prune
-        with:
-          pr_number: ${{ env.PR_NUMBER }}
-      - name: Summarize and notify
-        if: ${{ always() }}
-        env:
-          JOB_STATUS: ${{ job.status }}
-          STEPS: ${{ toJSON(steps) }}
-          RESULTS: ${{ steps.review.outputs.results || steps.pick.outputs.results || '[]' }}
-        run: node .github/actions/deploy-notify/notify.mjs
-  checks:
-    needs: preview
-    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    uses: ./.github/workflows/review.review-deploy.yml
+    secrets: inherit
+    with:
+      head_sha: ${{ github.event.pull_request.head.sha }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      pr_number: ${{ github.event.pull_request.number }}
+  tooling:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - uses: ./.github/actions/use-repo
-      - name: Lint changed packages
-        env:
-          PACKAGES: ${{ needs.preview.outputs.changes }}
-        run: node .github/scripts/task.mjs lint
+        with:
+          filter: |
+            .
+            @repo/scripts...
       - name: Check deployment tooling
-        if: ${{ always() }}
         run: |
+          pnpm --filter @repo/scripts exec tsc --noEmit
           pnpm --filter @repo/scripts exec vitest run
-          node --test .github/scripts/*.test.mjs
-  ui-tests:
-    needs: preview
-    if: ${{ always() && needs.preview.outputs.changes != '' && needs.preview.outputs.changes != '[]' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
-      - name: Convert packages to filters
-        id: filters
-        env:
-          PACKAGES: ${{ needs.preview.outputs.changes }}
-        run: |
-          node --input-type=module <<'JS'
-          import {appendFileSync} from 'node:fs';
-          appendFileSync(process.env.GITHUB_OUTPUT, `filter<<PACKAGES_END\n${JSON.parse(process.env.PACKAGES).join('\n')}\nPACKAGES_END\n`);
-          JS
-      - uses: ./.github/actions/ui-test
-        with:
-          filter: ${{ steps.filters.outputs.filter }}
-          pr_number: ${{ github.event.pull_request.number || inputs.pr_number }}

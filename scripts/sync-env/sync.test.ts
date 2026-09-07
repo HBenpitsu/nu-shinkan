@@ -141,3 +141,29 @@ it("leaves unregistered packages untouched and consumes tombstones after registe
   );
   expect(readFileSync(state.file, "utf8")).not.toContain("OLD");
 });
+
+it.each([false, true])(
+  "forwards filters to Turbo and preserves shared config (dryRun=%s)",
+  (dryRun) => {
+    const root = fixture();
+    const original = readFileSync(state.file, "utf8");
+    vi.mocked(execFileSync).mockReturnValue("");
+
+    sync(root, dryRun, ["a", "!b"]);
+
+    expect(execFileSync).toHaveBeenLastCalledWith(
+      "pnpm",
+      [
+        "exec",
+        "turbo",
+        "run",
+        "sync:local",
+        "--filter=a",
+        "--filter=!b",
+        ...(dryRun ? ["--", "--dry-run"] : []),
+      ],
+      { cwd: root, stdio: "inherit" },
+    );
+    expect(readFileSync(state.file, "utf8")).toBe(original);
+  },
+);

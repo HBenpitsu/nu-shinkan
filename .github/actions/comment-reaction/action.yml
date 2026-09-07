@@ -4,6 +4,7 @@ inputs:
   token:
     description: Token with permission to write PR comment reactions
     required: true
+    default: ${{ github.token }}
   job-status:
     description: Job status evaluated when the action runs
     # The runner evaluates this default again when running post.

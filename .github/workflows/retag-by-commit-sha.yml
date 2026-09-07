@@ -34,11 +34,16 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
       
-      - name: Use GitHub App
+      - id: use-app
         uses: ./.github/actions/use-app
         with:
           APP_ID: ${{ secrets.RETAG_APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.RETAG_APP_PRIVATE_KEY }}
+
+      - name: Checkout workflow actions
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.use-app.outputs.TOKEN }}
 
       - name: Move tag
         shell: bash
