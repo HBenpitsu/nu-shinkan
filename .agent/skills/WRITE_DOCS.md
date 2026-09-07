@@ -56,14 +56,26 @@ Check the following and revise any item that fails:
 - Are final decisions, proposals, and unresolved questions clearly distinguished where applicable?
 - Have edits been integrated without leaving contradictory or outdated statements?
 
-# The Rule Of Document Amending
+# Stance for README.md Editing
 
-## ADR
+README.md editing is unnecessary in most cases.
+It is desired to put living document in docs/ dir, and to name the file explicitly.
+When you should add some document which is short living, just use docs/discussion/.
 
-You MUST NOT amend existing content of `ADR/*` documents.
-When you revise it, append the content.
-EXCEPTION: When user requested to merge amending, you can edit existing content.
+EXCEPTION: if README.md contains explicit living section, you can edit the section only.
 
-## Whole
+# Document Protection Rule
 
-Remember the **Document Fences**
+Documents may contain agent instructions that define their authority or conditions for modification. Like this:
+
+```md
+> **For agents:** This document is the authoritative design; align the implementation with it. Design changes require explicit user instruction.
+```
+
+Treat these instructions as document fences and follow them when working with the document.
+
+- Read any fence before using or editing the document. Do not load unrelated documents solely to search for fences.
+- Respect the distinction between authoritative design and descriptions of the current implementation. If a fence designates a document as authoritative, do not rewrite it merely to match existing behavior.
+- Do not interpret an ordinary implementation request as permission to change a protected design or remove its fence.
+- If a request conflicts with a protected design, review the relevant section, explain the conflict, and clarify the user's intent before proceeding with conflicting work. Identify the document and quote the applicable instruction. Continue work that does not depend on resolving the conflict.
+- Explicit user instructions take precedence. If the user has already explicitly authorized the design change, proceed without asking again.

@@ -1,3 +1,5 @@
+# テストコードへの接続
+
 ## TEST時のメイン発火を防ぐエントリーポイント
 
 ```ts
@@ -16,19 +18,19 @@ try {
 
 ```ts
 function someTestedFunction() {
-    // ...
+  // ...
 }
 
 export const testExports = {
-    someTestedFunction
-}
+  someTestedFunction,
+};
 ```
 
----
+# Github Workflow/Actions
 
 ## GitHub Actions: github-script による GitHub API / コメント操作
 
-GitHub REST API / PR・Issue コメント / Actions 出力操作を行う場合は `actions/github-script@v7` を使用します。
+GitHub REST API / PR・Issue コメント / Actions 出力操作 / 簡単なJSONオブジェクトの解析等を行う場合は `actions/github-script@v7` を使用します。
 
 ```yaml
 - name: Post PR Comment
@@ -49,11 +51,14 @@ GitHub REST API / PR・Issue コメント / Actions 出力操作を行う場合�
       });
 ```
 
----
+次の場合は，Action化 + 補助スクリプトへの抽出を検討します
+
+- 15行以上のスクリプト
+- 分岐を含む複雑な構造
 
 ## GitHub Actions: Composite Action から同階層の .mjs 補助スクリプト呼び出し
 
-ローカルロジック（Git操作、ファイル解析等）は Action 直下に同封した `.mjs` 補助スクリプトとして実行します。
+ローカルロジック（複雑なGit操作、ファイル解析等）は Action 直下に同封した `.mjs` 補助スクリプトとして実行します。
 
 ```yaml
 # .github/actions/my-action/action.yml
@@ -69,7 +74,7 @@ runs:
 
 ```javascript
 // .github/actions/my-action/helper.mjs
-import { execSync } from 'node:child_process';
+import { execSync } from "node:child_process";
 
 export function runHelper({ profile }) {
   console.log(`Executing helper script for profile: ${profile}`);
@@ -78,6 +83,6 @@ export function runHelper({ profile }) {
 
 // エントリーポイント呼び出し
 runHelper({
-  profile: process.env.PROFILE
+  profile: process.env.PROFILE,
 });
 ```
