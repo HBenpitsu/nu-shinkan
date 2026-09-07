@@ -7,12 +7,6 @@ inputs:
 outputs:
   targets:
     description: JSON形式のWorkerターゲットメタデータ
-    value: ${{ steps.resolve.outputs.targets }}
 runs:
-  using: composite
-  steps:
-    - id: resolve
-      shell: bash
-      env:
-        PACKAGES: ${{ inputs.packages }}
-      run: node "${{ github.action_path }}/resolve-targets.mjs"
+  using: node24
+  main: resolve-targets.mjs

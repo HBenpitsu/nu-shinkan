@@ -19,22 +19,10 @@ inputs:
 outputs:
   channel:
     description: 検証済みチャネル
-    value: ${{ steps.resolve.outputs.channel }}
   head:
     description: HeadコミットSHA
-    value: ${{ steps.resolve.outputs.head }}
   base:
     description: BaseコミットSHA
-    value: ${{ steps.resolve.outputs.base }}
 runs:
-  using: composite
-  steps:
-    - id: resolve
-      shell: bash
-      env:
-        EVENT: ${{ inputs.event_name }}
-        CHANNEL: ${{ inputs.channel }}
-        BEFORE: ${{ inputs.before }}
-        AFTER: ${{ inputs.after }}
-        CREATED: ${{ inputs.created }}
-      run: node "${{ github.action_path }}/resolve-tag.mjs"
+  using: node24
+  main: resolve-tag.mjs

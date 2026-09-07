@@ -11,4 +11,4 @@ export function resolveWorkerTargets(packagesJson) {
   appendFileSync(process.env.GITHUB_OUTPUT, `targets=${JSON.stringify(targets)}\n`);
 }
 
-resolveWorkerTargets(process.env.PACKAGES);
+resolveWorkerTargets(process.env.INPUT_PACKAGES);

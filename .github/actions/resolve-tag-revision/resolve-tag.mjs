@@ -12,9 +12,9 @@ export function resolveTagRevision({ event, channel, before, after, created }) {
 }
 
 resolveTagRevision({
-  event: process.env.EVENT,
-  channel: process.env.CHANNEL,
-  before: process.env.BEFORE,
-  after: process.env.AFTER,
-  created: process.env.CREATED
+  event: process.env.INPUT_EVENT_NAME,
+  channel: process.env.INPUT_CHANNEL,
+  before: process.env.INPUT_BEFORE,
+  after: process.env.INPUT_AFTER,
+  created: process.env.INPUT_CREATED
 });
