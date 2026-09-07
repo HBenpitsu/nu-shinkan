@@ -1,32 +1,3 @@
-# テストコードへの接続
-
-## TEST時のメイン発火を防ぐエントリーポイント
-
-```ts
-function main() {
-    ...
-}
-
-try {
-    if (!process.env.VITEST) main();
-} catch {
-    // エラーハンドリング
-}
-```
-
-## TESTのためだけに公開するインタフェース
-
-```ts
-function someTestedFunction() {
-  // ...
-}
-
-export const testExports = {
-  someTestedFunction,
-};
-```
-
-# Github Workflow/Actions
 
 ## GitHub Actions: github-script による GitHub API / コメント操作
 
@@ -55,6 +26,7 @@ GitHub REST API / PR・Issue コメント / Actions 出力操作 / 簡単なJSON
 
 - 15行以上のスクリプト
 - 分岐を含む複雑な構造
+
 
 ## GitHub Actions: Composite Action から同階層の .mjs 補助スクリプト呼び出し
 
