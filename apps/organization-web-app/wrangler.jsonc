@@ -1,0 +1,25 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "organization-web-app",
+	"compatibility_date": "2026-08-25",
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+    "directory": "./dist"
+  },
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+  },
+  "services": [
+    {
+      "binding": "ORGANIZATION_USER_SERVICE",
+      "service": "organization-user-service"
+    }
+  ]
+}

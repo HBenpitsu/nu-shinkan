@@ -1,0 +1,10 @@
+envs:
+  staging:
+    SELF: https://organization-user-service-staging.nushinkan2.workers.dev
+  release:
+    SELF: https://organization-user-service-release.nushinkan2.workers.dev
+connections:
+  bindings: {}
+  urls:
+    SELF: "@repo/organization-user-service"
+reviewEntry: false

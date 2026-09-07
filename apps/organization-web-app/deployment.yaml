@@ -1,0 +1,11 @@
+envs:
+  staging:
+    SELF: https://organization-web-app-staging.nushinkan2.workers.dev
+  release:
+    SELF: https://organization-web-app-release.nushinkan2.workers.dev
+connections:
+  bindings:
+    ORGANIZATION_USER_SERVICE: "@repo/organization-user-service"
+  urls:
+    SELF: "@repo/organization-web-app"
+reviewEntry: true

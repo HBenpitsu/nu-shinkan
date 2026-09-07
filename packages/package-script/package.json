@@ -1,0 +1,25 @@
+{
+  "name": "@repo/package-script",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "prepare": "tsc -b",
+    "test": "vitest src/",
+    "lint": "eslint . --fix",
+    "compile": "eslint . --fix && vitest src/ --run && tsc -b"
+  },
+  "bin": {
+    "delete-preview-worker": "bin/delete-preview-worker.js"
+  },
+  "devDependencies": {
+    "@repo/app-config": "workspace:*",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
+    "jsonc-parser": "^3.3.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.11"
+  }
+}

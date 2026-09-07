@@ -1,0 +1,88 @@
+name: Run UI Test
+description: Run UI tests for the project.
+
+inputs:
+  context:
+    description: Test context. Test results that share the same context will be cached.
+    required: false
+  filter:
+    description: Turbo filters as text or a JSON array; [] selects no UI tests
+    required: false
+  pr_number:
+    description: |
+      PR or issue number. Defaults to the PR or issue from the triggering event. 
+      Commenting requires pull-requests write (PR) or issues write (issue) permission.
+    required: false
+  artifact_name:
+    description: Artifact name. Use a unique name for each invocation within a workflow run.
+    default: ui_test-reports
+
+outputs:
+  artifact_url:
+    description: Download link for the uploaded UI test reports
+    value: ${{ steps.upload.outputs.artifact-url }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/use-repo
+      with:
+        context: ${{ inputs.context }}
+        # Bootstrap Turbo before discovering UI test packages.
+        filter: .
+
+    - name: Prepare Filter
+      id: filter
+      uses: ./.github/actions/refine-filter
+      with:
+        task: ui_test
+        filter: ${{ inputs.filter }}
+
+    - name: Run UI Test
+      id: tests
+      if: ${{ steps.filter.outputs.has_hit == 'true' }}
+      shell: bash
+      env:
+        HUSKY: 0
+        TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
+        DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
+      run: |
+        mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
+        mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
+
+        pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
+        pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
+        # Playwright installs shared OS packages via apt; serialize across workspaces.
+        pnpm exec turbo run ui_test:prepare --concurrency=1 --only "${test_args[@]}"
+        pnpm exec turbo run ui_test --only "${test_args[@]}"
+
+    - name: Collect UI test reports
+      id: collect
+      if: ${{ !cancelled() && (steps.tests.outcome == 'success' || steps.tests.outcome == 'failure') }}
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: node "$ACTION_PATH/collect-ui_test-reports.mjs"
+
+    - name: Upload UI test reports
+      id: upload
+      if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: ui_test-reports/
+        if-no-files-found: warn
+
+    - name: Upsert PR or issue comment
+      if: ${{ !cancelled() && steps.upload.outputs.artifact-url != '' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
+      uses: actions/github-script@v7
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        TEST_OUTCOME: ${{ steps.tests.outcome }}
+      with:
+        script: |
+          const path = require('node:path');
+          const upsertComment = require(path.join(process.env.ACTION_PATH, 'upsert-comment.cjs'));
+          await upsertComment({ github, context });

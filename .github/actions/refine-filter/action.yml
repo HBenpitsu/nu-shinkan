@@ -1,0 +1,21 @@
+name: Refine Turbo Filter
+description: Refines Turbo filters to match a specific task and outputs the arguments for direct and dependency tasks.
+inputs:
+  task:
+    description: turbo task
+    required: true
+  filter:
+    description: Turbo filters
+    default: ""
+outputs:
+  packages:
+    description: Exact package names as JSON
+  deps_args:
+    description: Dependency arguments as JSON
+  affected_args:
+    description: Exact task arguments as JSON
+  has_hit:
+    description: Whether matching tasks exist
+runs:
+  using: node24
+  main: refine-filter.mjs

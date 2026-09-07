@@ -4,17 +4,20 @@
   "scripts": {
     "test": "vitest",
     "dev": "wrangler dev --host 0.0.0.0 --port 6173 --inspector-port 9229",
-    "predeploy": "env:materialize",
-    "deploy": "wrangler deploy --config .generated/wrangler.jsonc --minify",
+    "deploy": "wrangler deploy --config wrangler.deploy.jsonc --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "check-types": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "build": "app-build",
+    "sync:local": "sync-local",
+    "undeploy:preview": "delete-preview-worker"
   },
   "dependencies": {
     "hono": "^4.13.5"
   },
   "devDependencies": {
-    "@repo/env-config": "workspace:*",
+    "@repo/app-config": "workspace:*",
+    "@repo/package-script": "workspace:*",
     "@cloudflare/workers-types": "^5.20260902.1",
     "@eslint/js": "^10.0.1",
     "eslint": "^10.9.0",

@@ -1,58 +1,62 @@
-name: Deploy Release By Tag
-
+name: Deploy channel
 on:
   push:
-    tags:
-      - release
-      - staging
-
+    tags: [staging, release]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to deploy in full
+        type: choice
+        options: [staging, release]
+        required: true
+permissions:
+  contents: read
 jobs:
-  detect:
-    uses: ./.github/workflows/affected-detection.yml
-    with:
-      base_sha: ${{ github.event.before }}
-      cache_channel: ${{ github.ref_name }}
-  heavy-tests:
-    needs: detect
-    uses: ./.github/workflows/heavy-tests.yml
-    with:
-      affected: ${{ needs.detect.outputs.apps_affected }}
-      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
-  light-tests:
-    needs: detect
-    uses: ./.github/workflows/light-tests.yml
-    with:
-      affected: ${{ needs.detect.outputs.apps_affected }}
-      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
-  deploy:
-    needs: 
-      - heavy-tests
-      - light-tests
-      - detect
-    name: Deploy affected apps
+  receive:
+    if: ${{ !github.event.deleted }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    environment: ${{ github.ref_name }}
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    outputs:
+      channel: ${{ steps.request.outputs.channel }}
+      head: ${{ steps.request.outputs.head }}
+      base: ${{ steps.request.outputs.base }}
+      source: ${{ steps.request.outputs.source }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-        
-      - name: Setup
-        uses: ./.github/actions/setup
-        with:
-          checkout: 'shallow'
-          deploy_channel: ${{ github.ref_name }}
-          turbo_cache: 'update'
-
-      - name: Deploy affected apps
+          fetch-depth: 0
+      - id: request
         shell: bash
         env:
-          FILTERS: ${{ needs.detect.outputs.apps_filter_args }}
-          DEPLOY_CHANNEL: ${{ github.ref_name }}
-        run: pnpm deploy --concurrency=2 $FILTERS
+          EVENT: ${{ github.event_name }}
+          CHANNEL: ${{ inputs.channel || github.ref_name }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          CREATED: ${{ github.event.created }}
+        run: |
+          node --input-type=module <<'JS'
+          import {execFileSync} from 'node:child_process';
+          import {appendFileSync} from 'node:fs';
+          const {EVENT,CHANNEL,BEFORE,AFTER,CREATED}=process.env;
+          if(!['staging','release'].includes(CHANNEL))throw Error('Invalid channel');
+          const ref=EVENT==='workflow_dispatch'?`refs/tags/${CHANNEL}`:AFTER;
+          const head=execFileSync('git',['rev-parse','--verify',`${ref}^{commit}`],{encoding:'utf8'}).trim();
+          const source=EVENT==='workflow_dispatch'||CREATED==='true'?'full':'diff';
+          appendFileSync(process.env.GITHUB_OUTPUT,`channel=${CHANNEL}\nhead=${head}\nbase=${BEFORE??''}\nsource=${source}\n`);
+          JS
+  full-deploy:
+    needs: receive
+    if: ${{ needs.receive.outputs.source == 'full' }}
+    uses: ./.github/workflows/update.full-deploy.yml
+    secrets: inherit
+    with:
+      channel: ${{ needs.receive.outputs.channel }}
+      head_sha: ${{ needs.receive.outputs.head }}
+  update-deploy:
+    needs: receive
+    if: ${{ needs.receive.outputs.source == 'diff' }}
+    uses: ./.github/workflows/update.update-deploy.yml
+    secrets: inherit
+    with:
+      channel: ${{ needs.receive.outputs.channel }}
+      head_sha: ${{ needs.receive.outputs.head }}
+      base_sha: ${{ needs.receive.outputs.base }}

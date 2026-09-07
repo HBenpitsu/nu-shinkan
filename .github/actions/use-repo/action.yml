@@ -1,0 +1,76 @@
+name: Repository Setup
+description: This action defines setting up steps for workflows to use package dependencies.
+
+inputs:
+  context:
+    description: Cache key for the Turbo cache. Defaults to the commit hash of the triggering event.
+    required: false
+  filter:
+    description: Turbo filter expressions for install
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+      - name: Setup pnpm
+        if: env.REPO_SETUP_DONE != 'true'
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        if: env.REPO_SETUP_DONE != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Restore node_modules cache
+        if: env.REPO_SETUP_DONE != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            !node_modules/.cache/turbo
+          key: node-modules-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Interpret Context
+        if: env.REPO_SETUP_DONE != 'true'
+        shell: bash
+        env:
+          SHA: ${{ github.sha }}
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          # if input.context is empty - the key is commit hash
+          if [ -z "$CONTEXT" ]; then
+            CONTEXT="$SHA"
+          fi
+          # otherwise, uses the provided context
+          echo "CONTEXT=$CONTEXT" >> $GITHUB_ENV
+          
+      - name: Prepare Turbo Cache
+        if: env.REPO_SETUP_DONE != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .turbo
+            node_modules/.cache/turbo
+          key: turbo-${{ runner.os }}-${{ env.CONTEXT }}
+
+      - name: Install dependencies
+        shell: bash
+        env:
+          HUSKY: 0
+          FILTER: ${{ inputs.filter }}
+        run: |
+          args=()
+          while IFS= read -r filter || [ -n "$filter" ]; do
+            [ -z "$filter" ] && continue
+            args+=("--filter=$filter")
+          done <<< "$FILTER"
+
+          pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
+
+      - name: Mark setup complete
+        if: env.REPO_SETUP_DONE != 'true'
+        shell: bash
+        run: echo "REPO_SETUP_DONE=true" >> "$GITHUB_ENV"

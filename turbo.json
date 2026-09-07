@@ -15,16 +15,38 @@
     "test": {
       "dependsOn": ["^test"]
     },
-    "e2e": {
-      "dependsOn": ["^e2e"]
+    "ui_test": {
+      "dependsOn": ["^ui_test"]
     },
-    "env:sync": {
-      "dependsOn": ["^env:sync"]
+    "ui_test:prepare": {
+      "cache": false,
+      "dependsOn": ["^ui_test:prepare"]
+    },
+    "undeploy:preview": {
+      "cache": false,
+      "env": ["PR_NUMBER", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"]
     },
     "deploy": {
       "cache": false,
-      "dependsOn": ["^env:sync", "^predeploy", "^deploy"],
-      "env": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "PR_NUMBER"]
+      "env": [
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+        "DEPLOY_CHANNEL",
+        "PR_NUMBER",
+        "TARGETS"
+      ]
+    },
+    "build": {
+      "cache": false,
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/app-config/globalRuntimeEnvs.yaml"
+      ],
+      "outputs": ["wrangler.deploy.jsonc", ".env.deploy", "dist/**"],
+      "env": ["DEPLOY_CHANNEL", "PR_NUMBER", "TARGETS"]
+    },
+    "sync:local": {
+      "cache": false
     }
   }
 }

@@ -1,67 +1,33 @@
-name: Deploy Preview By PR
-
+name: Review pull request
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
-
-concurrency:
-  group: deploy-preview-pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
+    types: [opened, reopened, synchronize]
+permissions:
+  contents: read
+  pull-requests: write
 jobs:
-  detect:
-    uses: ./.github/workflows/affected-detection.yml
+  preview:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    uses: ./.github/workflows/review.review-deploy.yml
+    secrets: inherit
     with:
-      base_sha: ${{ github.event.before }}
-      cache_channel: ${{ github.ref_name }}
-  heavy-tests:
-    needs: detect
-    uses: ./.github/workflows/heavy-tests.yml
-    with:
-      affected: ${{ needs.detect.outputs.apps_affected }}
-      filter_args: ${{ needs.detect.outputs.apps_filter_args }}
-  light-tests:
-    needs: detect
-    uses: ./.github/workflows/light-tests.yml
-    with:
-      affected: ${{ needs.detect.outputs.affected }}
-      filter_args: ${{ needs.detect.outputs.affected_filter_args }}
-  e2e-report:
-    needs: heavy-tests
-    permissions:
-      actions: read
-      pull-requests: write
-    uses: ./.github/workflows/e2e-report.yml
-  deploy-preview:
-    needs: 
-      - heavy-tests
-      - light-tests
-      - detect
-    name: Deploy preview for affected apps
+      head_sha: ${{ github.event.pull_request.head.sha }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+      pr_number: ${{ github.event.pull_request.number }}
+  tooling:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    environment: ${{ github.ref_name }}
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-
-      - name: Common Setup
-        uses: ./.github/actions/setup
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/use-repo
         with:
-          deploy_channel: ${{ github.ref_name }}
-          turbo_cache: 'update'
-
-      - name: Preview Deploy for affected apps
-        env:
-          FILTERS: ${{ needs.detect.outputs.apps_filter_args }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          DEPLOY_CHANNEL: preview
-        id: previews
-        run: pnpm deploy $FILTERS
+          filter: |
+            .
+            @repo/scripts...
+      - name: Check deployment tooling
+        run: |
+          pnpm --filter @repo/scripts exec tsc --noEmit
+          pnpm --filter @repo/scripts exec vitest run

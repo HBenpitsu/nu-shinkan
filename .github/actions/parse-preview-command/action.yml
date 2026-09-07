@@ -1,0 +1,10 @@
+name: Parse Preview Command
+description: |
+  Checks if the users' /preview command is used correctly, 
+  and outputs the picked packages.
+outputs:
+  picked:
+    description: Picked packages as JSON
+runs:
+  using: node24
+  main: main.mjs
