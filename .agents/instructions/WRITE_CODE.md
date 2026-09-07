@@ -1,1 +1,0 @@
-check `snippets/*` and reduce variation of the code.
