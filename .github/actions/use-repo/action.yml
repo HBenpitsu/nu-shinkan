@@ -5,6 +5,7 @@ inputs:
   context:
     description: Turboキャッシュ用のキャッシュキー。既定値はトリガーイベントのコミットハッシュ。
     required: false
+    default: ${{ github.sha }}
 
 runs:
   using: "composite"
@@ -27,20 +28,6 @@ runs:
           !node_modules/.cache/turbo
         key: node-modules-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml') }}
 
-    - name: コンテキストの解釈
-      if: env.REPO_SETUP_DONE != 'true'
-      shell: bash
-      env:
-        SHA: ${{ github.sha }}
-        CONTEXT: ${{ inputs.context }}
-      run: |
-        # if input.context is empty - the key is commit hash
-        if [ -z "$CONTEXT" ]; then
-          CONTEXT="$SHA"
-        fi
-        # otherwise, uses the provided context
-        echo "CONTEXT=$CONTEXT" >> $GITHUB_ENV
-
     - name: Turboキャッシュの準備
       if: env.REPO_SETUP_DONE != 'true'
       uses: actions/cache@v4
@@ -48,7 +35,7 @@ runs:
         path: |
           .turbo
           node_modules/.cache/turbo
-        key: turbo-${{ runner.os }}-${{ env.CONTEXT }}
+        key: turbo-${{ runner.os }}-${{ inputs.context || github.sha }}
 
     - name: デフォルトリポジトリ依存関係のインストール
       shell: bash
