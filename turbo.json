@@ -2,7 +2,9 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
-    "bootstrap": {},
+    "bootstrap": {
+      "dependsOn": ["^bootstrap"]
+    },
     "lint": {
       "dependsOn": ["^lint"]
     },
