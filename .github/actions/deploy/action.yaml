@@ -43,4 +43,4 @@ runs:
         TARGETS: ${{ steps.filter.outputs.direct_args }}
       run: |
         mapfile -t args < <(node -e 'JSON.parse(process.env.TARGETS).forEach(arg => console.log(arg))')
-        pnpm exec turbo run deploy "${args[@]}"
+        pnpm exec turbo run deploy "${args[@]}" --continue=always
