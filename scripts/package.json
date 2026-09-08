@@ -2,7 +2,7 @@
   "name": "@repo/scripts",
   "type": "module",
   "scripts": {
-    "test": "pnpm --workspace-root build:packages && vitest"
+    "test": "vitest"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
