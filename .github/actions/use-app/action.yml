@@ -5,14 +5,21 @@ outputs:
   TOKEN: 
     description: リポジトリ用 GitHub App トークン
     value: ${{ steps.app-token.outputs.token }}
+inputs:
+  app_id:
+    description: GitHub App ID
+    required: true
+  app_private_key:
+    description: GitHub App private key
+    required: true
 runs:
   using: "composite"
   steps:
     - name: GitHub App認証情報の検証
       shell: bash
       env:
-        APP_ID: ${{ secrets.GIT_OPS_APP_ID }}
-        APP_PRIVATE_KEY: ${{ secrets.GIT_OPS_APP_PRIVATE_KEY }}
+        APP_ID: ${{ inputs.app_id }}
+        APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       run: |
         set -euo pipefail
 
@@ -29,7 +36,7 @@ runs:
     - id: app-token
       uses: actions/create-github-app-token@v1
       with:
-        app-id: ${{ secrets.GIT_OPS_APP_ID }}
-        private-key: ${{ secrets.GIT_OPS_APP_PRIVATE_KEY }}
+        app-id: ${{ inputs.app_id }}
+        private-key: ${{ inputs.app_private_key }}
         owner: ${{ github.repository_owner }}
         repositories: ${{ github.event.repository.name }}
