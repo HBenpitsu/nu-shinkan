@@ -73,7 +73,7 @@ export function buildPreviewDeployReport({
 	jobStatus,
 	deployChannel,
 	prNumber,
-	isPrOpen,
+	prValid,
 	runUrl,
 }) {
 	const targets = parseJson(targetsText, []);
@@ -88,7 +88,7 @@ export function buildPreviewDeployReport({
 		if (typeof pkg !== "string" || !pkg)
 			return { package: "(unknown)", status: "unknown", success: false };
 
-		if (!deployPackages.has(pkg)) {
+		if (prValid === "false" || !deployPackages.has(pkg)) {
 			return {
 				package: pkg,
 				status: "not-needed",
@@ -137,14 +137,27 @@ export function buildPreviewDeployReport({
 	});
 
 	const detail =
-		isPrOpen === "false"
-			? "PR is not open. Deployment skipped."
+		prValid === "false"
+			? "PR request is no longer valid. Deployment skipped."
 			: results.length > 0
 				? ""
 				: "No packages deployed.";
 
+	const hasFailure =
+		jobStatus === "failure" ||
+		failedSteps.length > 0 ||
+		(Number.isInteger(deployStatus) && deployStatus !== 0) ||
+		results.some((result) => result.success === false);
+	const status = hasFailure
+		? results.some((result) => result.status === "deployed")
+			? "partially failed"
+			: "failed"
+		: results.some((result) => result.status === "deployed")
+			? "deployed"
+			: "no-op";
+
 	const body = [
-		`### ${deployChannel || "preview"}: ${jobStatus || "unknown"}`,
+		`### ${deployChannel || "preview"}: ${status}`,
 		detail,
 		`[Actions run](${runUrl})`,
 		failedSteps.length ? `Failed steps: ${failedSteps.join(", ")}` : "",
@@ -158,12 +171,17 @@ export function buildPreviewDeployReport({
 	return {
 		results,
 		body,
-		hasFailure:
-			failedSteps.length > 0 || results.some((result) => result.success === false),
+		status,
+		hasFailure,
 	};
 }
 
-export async function notifyPreviewDeployReport({ core, github, context, report }) {
+export async function notifyPreviewDeployReport({
+	core,
+	github,
+	context,
+	report,
+}) {
 	await core.summary.addRaw(report.body).write();
 	const issueNumber = Number.parseInt(process.env.PR_NUMBER || "", 10);
 	if (Number.isInteger(issueNumber) && issueNumber > 0) {

@@ -23,7 +23,7 @@ runs:
         context: ${{ inputs.context }}
 
     - id: filter
-      uses: ./.github/actions/refine-filter
+      uses: ./.github/actions/filter-util
       with:
         task: lint
         filter: ${{ inputs.filter }}
@@ -39,8 +39,8 @@ runs:
         mapfile -t lint_args < <(node -e 'JSON.parse(process.env.LINT_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
 
-        pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm install --frozen-lockfile --prefer-offline "${lint_args[@]}"
+        pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install "${install_args[@]}"
+        pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install "${lint_args[@]}"
         pnpm exec turbo run lint --only "${lint_args[@]}"
 
     - name: Lint失敗時のコメント投稿

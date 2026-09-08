@@ -6,7 +6,9 @@ const task = process.env.INPUT_TASK;
 if (!task || !/^[\w:-]+$/.test(task))
   throw new Error("A valid task input is required");
 const filter = process.env.INPUT_FILTER ?? "";
-const filters = normalizeFilterInput(filter);
+const filters = normalizeFilterInput(filter).map((value) =>
+  process.env.INPUT_DEPENDENTS === "true" ? `...${value}` : value,
+);
 const explicitEmpty = filter.trim() !== "" && filters.length === 0;
 const tasks = explicitEmpty
   ? []
@@ -26,6 +28,7 @@ const tasks = explicitEmpty
       ),
     ).tasks;
 if (!Array.isArray(tasks)) throw new Error("Invalid Turbo task output");
+const input_packages = [...new Set(tasks.map((entry) => entry.package))];
 const packages = [
   ...new Set(
     tasks
@@ -45,6 +48,7 @@ const packages = [
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   [
+    `input_packages=${JSON.stringify(input_packages)}`,
     `packages=${JSON.stringify(packages)}`,
     `deps_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}...`))}`,
     `direct_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}`))}`,

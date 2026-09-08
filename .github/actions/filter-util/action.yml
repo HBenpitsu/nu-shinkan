@@ -7,7 +7,12 @@ inputs:
   filter:
     description: 絞り込み対象のTurboフィルター
     default: ""
+  dependents:
+    description: 入力フィルタの依存元も候補に含める
+    default: "false"
 outputs:
+  input_packages:
+    description: 入力されたフィルタに適合するパッケージ名のJSON配列
   packages:
     description: 絞り込まれたパッケージ名のJSON配列
   direct_args:
@@ -18,4 +23,4 @@ outputs:
     description: 条件を満たすパッケージが一つ以上存在するか
 runs:
   using: node24
-  main: refine-filter.mjs
+  main: filter-util.mjs

@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 
 const root = resolve(import.meta.dirname, "../..");
 const normalizePath = new URL(
-  "../../.github/actions/refine-filter/normalize-filter-input.mjs",
+  "../../.github/actions/filter-util/normalize-filter-input.mjs",
   import.meta.url,
 ).href;
 const previewPath = new URL(
@@ -57,19 +57,20 @@ it("parses only exact package picks and validates Turbo's actual listing shape",
   ).toThrow("Unknown packages");
   expect(() => checkExistence(["api"], [])).toThrow("Invalid Turbo");
 });
-function refine(filter: string) {
+function refine(filter: string, dependents = false) {
   const temp = mkdtempSync(join(tmpdir(), "refine-action-"));
   try {
     const output = join(temp, "outputs");
     execFileSync(
       process.execPath,
-      [".github/actions/refine-filter/refine-filter.mjs"],
+      [".github/actions/filter-util/filter-util.mjs"],
       {
         cwd: root,
         env: {
           ...process.env,
           INPUT_TASK: "deploy",
           INPUT_FILTER: filter,
+          INPUT_DEPENDENTS: String(dependents),
           GITHUB_OUTPUT: output,
         },
         stdio: "pipe",
@@ -94,36 +95,41 @@ it("keeps an explicit empty selection empty, and does not redeploy dependents of
   expect(JSON.parse(empty.packages!)).toEqual([]);
   const selected = refine("@repo/dummy-preview-api");
   expect(selected.has_hit).toBe("true");
-  expect(JSON.parse(selected.affected_args!)).toEqual([
+  expect(JSON.parse(selected.direct_args!)).toEqual([
     "--filter=@repo/dummy-preview-api",
   ]);
   expect(JSON.parse(selected.deps_args!)).toEqual([
     "--filter=@repo/dummy-preview-api...",
   ]);
-  expect(refine("@repo/scripts").has_hit).toBe("false");
+  const scriptOnly = refine("@repo/scripts");
+  expect(scriptOnly.has_hit).toBe("false");
+  expect(JSON.parse(scriptOnly.input_packages!)).toEqual(["@repo/scripts"]);
 }, 20000);
-it("passes graph output through stdin, including the empty case", () => {
-  const graph = execFileSync(
-    "pnpm",
-    ["exec", "tsx", "scripts/connection-graph/build.ts"],
-    { cwd: root, encoding: "utf8" },
+it("connects picked packages to preview metadata and deployable targets, preserving empty selections", async () => {
+  const { planPreview } = await import(
+    new URL("../../.github/actions/preview-deploy/plan.mjs", import.meta.url)
+      .href
   );
-  const selected = spawnSync(
-    "pnpm",
-    [
-      "exec",
-      "tsx",
-      "scripts/connection-graph/select.ts",
-      "--graph",
-      "-",
-      "--",
-      "@repo/dummy-preview-api",
-    ],
-    { cwd: root, encoding: "utf8", input: graph },
+  const picked = parsePreviewCommand("/preview @repo/dummy-preview-api");
+  const sources = JSON.parse(
+    refine(JSON.stringify(picked), true).input_packages!,
   );
-  expect(selected.status, selected.stderr).toBe(0);
-  expect(JSON.parse(selected.stdout)).toEqual([
-    "@repo/dummy-preview-api",
-    "@repo/dummy-preview-web",
-  ]);
+  expect(sources).toContain("@repo/dummy-preview-web");
+  const selected = planPreview(sources, picked);
+  expect(selected.targets).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        package: picked[0],
+        workerName: expect.any(String),
+        path: expect.any(String),
+      }),
+    ]),
+  );
+  expect(
+    JSON.parse(refine(JSON.stringify(selected.packages)).packages!),
+  ).toContain(picked[0]);
+  const taskless = planPreview(["@repo/scripts"], ["@repo/scripts"]);
+  expect(taskless.packages).toContain("@repo/scripts");
+  expect(refine(JSON.stringify(taskless.packages)).has_hit).toBe("false");
+  expect(planPreview([], [])).toEqual({ packages: [], targets: [] });
 }, 20000);

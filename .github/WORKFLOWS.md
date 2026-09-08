@@ -16,7 +16,7 @@
 
 fullは全件、diffは直接変更されたパッケージ、pickは指定パッケージをテスト対象にする。デプロイ対象は依存関係による影響先まで含め、review/pickではさらにconnection graphでreview入口からの利用経路を選ぶ。
 
-`refine-filter` は指定タスクを持つパッケージだけに絞り、`packages`、依存を含むインストール引数 `deps_args`、正確な実行引数 `affected_args`、`has_hit` を出力する。名前に反して `affected_args` は影響先を再展開しない。空文字は全件、JSONの `[]` は空対象であり、空対象を全件へ展開しない。
+`filter-util` は指定タスクを持つパッケージだけに絞り、`packages`、依存を含むインストール引数 `deps_args`、正確な実行引数 `affected_args`、`has_hit` を出力する。名前に反して `affected_args` は影響先を再展開しない。空文字は全件、JSONの `[]` は空対象であり、空対象を全件へ展開しない。
 
 `workspace/configs-cli.ts --targets` が選定対象へpathとWorker基底名を付与する。その結果を `TARGETS` に保持し、設定同期・build・deployへ渡す。テストactionは各対象の依存を準備するため、同じ作業領域でのインストール競合を避けて順番に実行する。UIテストはPlaywrightブラウザを導入して実行し、HTMLレポートをartifactへ保存する。
 

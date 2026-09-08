@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b --force",
     "prepare": "tsc -b",
     "test": "vitest src/",
     "lint": "eslint . --fix",
