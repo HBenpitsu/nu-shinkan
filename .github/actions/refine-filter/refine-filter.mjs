@@ -47,8 +47,7 @@ appendFileSync(
   [
     `packages=${JSON.stringify(packages)}`,
     `deps_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}...`))}`,
-    // Consumers have already selected affected packages; do not expand again.
-    `affected_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}`))}`,
+    `direct_args=${JSON.stringify(packages.map((pkg) => `--filter=${pkg}`))}`,
     `has_hit=${packages.length > 0}`,
     "",
   ].join("\n"),

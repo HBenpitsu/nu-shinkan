@@ -1,0 +1,158 @@
+name: Preview Deploy Targets
+description: 指定されたターゲットに対してプレビューデプロイを実行します
+
+inputs:
+  filter:
+    description:  デプロイ対象を絞り込むフィルタオプションのJSON配列．[]は明示的に空を指定します．
+    required: false
+  pr_number:
+    description: プレビューデプロイ対象のプルリクエスト番号
+    required: true
+
+outputs:
+  results:
+    description: デプロイ対象ごとの結果JSON
+    value: ${{ steps.notify.outputs.results }}
+  body:
+    description: PRコメントとサマリーに書き込んだ本文
+    value: ${{ steps.notify.outputs.body }}
+
+runs:
+  using: "composite"
+  steps: 
+    - uses: ./.github/actions/use-repo
+      with:
+        context: preview-${{ inputs.pr_number }}
+
+    - name: deploy対象の絞り込み
+      id: filter
+      uses: ./.github/actions/refine-filter
+      with:
+        task: deploy
+        filter: ${{ inputs.filter }}
+    
+    - name: connection-graphの生成
+      shell: bash
+      run: |
+        pnpm exec run tsx scripts/connection-graph.ts > connection-graph.json
+    
+    - name: connection-graphの適用
+      id: connection-graph-select
+      shell: bash
+      env:
+        PACKAGES: ${{ steps.filter.outputs.packages }}
+      run: |
+        mapfile -t packages < <(node -e 'JSON.parse(process.env.PACKAGES).forEach(pkg => console.log(pkg))')
+        EXTENT=$(pnpm exec run tsx scripts/connection-graph/select.ts "${packages[@]}" --graph connection-graph.json)
+        echo "extent=$EXTENT" >> $GITHUB_OUTPUT
+
+    - name: preview targetsの解決
+      id: targets
+      uses: actions/github-script@v7
+      env:
+        PACKAGES: ${{ steps.connection-graph-select.outputs.extent }}
+      with:
+        script: |
+          const { execFileSync } = require('child_process');
+          const packages = JSON.parse(process.env.PACKAGES);
+          const configs = JSON.parse(execFileSync(
+            'pnpm', ['exec', 'run', 'tsx', 'scripts/workspace/configs-cli.ts']
+          ));
+          const targets = configs.filter((cfg) => packages.includes(cfg.package));
+          const filters = packages.map((pkg) => `--filter=${pkg}...`);
+          core.setOutput('targets', JSON.stringify(targets));
+          core.setOutput('filters', JSON.stringify(filters));
+
+    - name: デプロイアーティファクトのビルド
+      id: build
+      if: ${{ steps.filter.outputs.has_hit == 'true' }}
+      shell: bash
+      env:
+        FILTER: ${{ steps.targets.outputs.filters }}
+        TARGETS: ${{ steps.targets.outputs.targets }}
+        DEPLOY_CHANNEL: preview
+        PR_NUMBER: ${{ inputs.pr_number }}
+      run: |
+        mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
+        pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
+        pnpm sync "${args[@]}"
+        pnpm exec turbo run build "${args[@]}"
+
+    - name: PR が open か確認
+      id: check_pr
+      env:
+        PR_NUMBER: ${{ inputs.pr_number }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const pr = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: Number(process.env.PR_NUMBER),
+          });
+
+          const isOpen = pr.data.state === 'open';
+          core.setOutput('is_open', String(isOpen));
+          if (!isOpen) core.warning(`PR #${process.env.PR_NUMBER} is not open. Current state: ${pr.data.state}`);
+
+    - name: deploy対象の絞り込み
+      id: deploy_filter
+      uses: ./.github/actions/refine-filter
+      with:
+        task: deploy
+        filter: ${{ steps.connection-graph-select.outputs.extent }}
+    
+    - name: デプロイの実行
+      id: deploy
+      if: ${{ steps.deploy_filter.outputs.has_hit == 'true' && steps.check_pr.outputs.is_open == 'true' }}
+      shell: bash
+      env:
+        FILTER: ${{ steps.deploy_filter.outputs.direct_args }}
+      run: |
+        mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
+        set +e
+        pnpm exec turbo run deploy --continue=always --summarize --ui=stream "${args[@]}" 2>&1 | tee deploy.log
+        status=${PIPESTATUS[0]}
+        summary_path=$(sed -n 's/^Summary:[[:space:]]*//p' deploy.log | tail -n1)
+        echo "status=$status" >> "$GITHUB_OUTPUT"
+        echo "summary_path=$summary_path" >> "$GITHUB_OUTPUT"
+        echo "log_path=$PWD/deploy.log" >> "$GITHUB_OUTPUT"
+        exit 0
+
+    - name: デプロイ結果の通知
+      id: notify
+      if: ${{ always() }}
+      uses: actions/github-script@v7
+      env:
+        TARGETS: ${{ steps.targets.outputs.targets || '[]' }}
+        DEPLOY_PACKAGES: ${{ steps.deploy_filter.outputs.packages || '[]' }}
+        DEPLOY_STATUS: ${{ steps.deploy.outputs.status || '' }}
+        DEPLOY_SUMMARY_PATH: ${{ steps.deploy.outputs.summary_path || '' }}
+        DEPLOY_LOG_PATH: ${{ steps.deploy.outputs.log_path || '' }}
+        JOB_STATUS: ${{ job.status }}
+        STEPS: ${{ toJSON(steps) }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        DEPLOY_CHANNEL: preview
+        IS_PR_OPEN: ${{ steps.check_pr.outputs.is_open || 'false' }}
+      with:
+        script: |
+          const path = require('node:path');
+          const helperPath = path.join(process.env.GITHUB_ACTION_PATH, 'comment.mjs');
+          const { buildPreviewDeployReport, notifyPreviewDeployReport } = await import(`file://${helperPath}`);
+          const report = buildPreviewDeployReport({
+            targetsText: process.env.TARGETS,
+            deployPackagesText: process.env.DEPLOY_PACKAGES,
+            deployStatusText: process.env.DEPLOY_STATUS,
+            summaryPath: process.env.DEPLOY_SUMMARY_PATH,
+            logPath: process.env.DEPLOY_LOG_PATH,
+            stepsText: process.env.STEPS,
+            jobStatus: process.env.JOB_STATUS,
+            deployChannel: process.env.DEPLOY_CHANNEL,
+            prNumber: process.env.PR_NUMBER,
+            isPrOpen: process.env.IS_PR_OPEN,
+            runUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+          });
+          core.setOutput('results', JSON.stringify(report.results));
+          core.setOutput('body', report.body);
+          await notifyPreviewDeployReport({ core, github, context, report });
+      

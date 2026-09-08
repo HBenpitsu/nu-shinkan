@@ -1,9 +1,9 @@
-name: テスト (Vitest)
-description: プロジェクト単位のテストを実行します。
+name: Lint
+description: Lintを実行します
 
 inputs:
   context:
-    description: テストコンテキスト。同一コンテキストを共有するテスト結果は turbo によってキャッシュされます。
+    description: テストコンテキスト。同一コンテキストを共有するLint結果はturboによりキャッシュされます。
     required: false
   filter:
     description: テスト対象を絞り込むフィルタオプションのJSON配列．[]は明示的に空を指定します．
@@ -25,31 +25,31 @@ runs:
     - id: filter
       uses: ./.github/actions/refine-filter
       with:
-        task: test
+        task: lint
         filter: ${{ inputs.filter }}
 
-    - id: tests
+    - id: lint
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
         HUSKY: 0
-        TEST: PACKAGE
+        LINT_ARGS: ${{ steps.filter.outputs.affected_args }}
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
-        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
       run: |
+        mapfile -t lint_args < <(node -e 'JSON.parse(process.env.LINT_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
-        mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm exec turbo run test --only "${test_args[@]}" -- --run
+        pnpm install --frozen-lockfile --prefer-offline "${lint_args[@]}"
+        pnpm exec turbo run lint --only "${lint_args[@]}"
 
-    - name: テスト失敗時のコメント投稿
-      if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
+    - name: Lint失敗時のコメント投稿
+      if: ${{ failure() && steps.lint.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
       uses: ./.github/actions/comment-result
       with:
         pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
-        marker: vi_test-failure
-        title: Vitest Unit Test Failure
+        marker: lint-failure
+        title: Lint Failure
         status: failure
         body: |
-          Vitest unit tests failed during workflow execution. Please check the workflow run logs for detailed failure traces.
+          Lint failed during workflow execution. Please check the workflow run logs for detailed failure traces.

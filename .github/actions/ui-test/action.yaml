@@ -3,18 +3,19 @@ description: プロジェクトのUIテストを実行します。
 
 inputs:
   context:
-    description: テストコンテキスト。同一コンテキストを共有するテスト結果はキャッシュされます。
+    description: テストコンテキスト。同一コンテキストを共有するテスト結果はturboによりキャッシュされます。
     required: false
   filter:
-    description: テストまたはJSON配列指定のTurboフィルター。[] はUIテストなしを選択
+    description: テスト対象を絞り込むフィルタオプションのJSON配列．[]は明示的に空を指定します．
     required: false
   pr_number:
     description: |
-      PRまたはIssue番号。既定値はトリガーイベントのPRまたはIssue。
-      コメント投稿には pull-requests write または issues write 権限が必要です。
+      PRまたはIssue番号。既定値はトリガーイベントのPRまたはIssue．
+      指定された場合は結果をコメントで通知します．
+      コメント投稿には pull-requests write または issues write 権限が必要です．
     required: false
   artifact_name:
-    description: アーティファクト名。ワークフロー実行内で呼び出しごとに一意な名前を使用してください。
+    description: アップロードするアーティファクトの名前．
     default: ui_test-reports
 
 outputs:
@@ -46,14 +47,13 @@ runs:
       env:
         HUSKY: 0
         TEST: PACKAGE
-        TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
+        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
       run: |
         mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
         # Playwright installs shared OS packages via apt; serialize across workspaces.
         pnpm exec turbo run ui_test:prepare --concurrency=1 --only "${test_args[@]}"
         pnpm exec turbo run ui_test --only "${test_args[@]}"
@@ -84,4 +84,15 @@ runs:
         title: Playwright UI test Report
         status: ${{ steps.tests.outcome }}
         artifact_url: ${{ steps.upload.outputs.artifact-url }}
+
+    - name: テスト失敗時のコメント投稿
+      if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
+      uses: ./.github/actions/comment-result
+      with:
+        pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        marker: ui_test-failure
+        title: Playwright UI Test Failure
+        status: failure
+        body: |
+          Playwright UI tests failed during workflow execution. Please check the workflow run logs for detailed failure traces.
 

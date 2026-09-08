@@ -2,6 +2,10 @@ name: 結果コメント
 description: PRまたはIssueに結果コメントを投稿または更新します。
 
 inputs:
+  token:
+    description: GitHub API呼び出し用トークン
+    required: false
+    default: ${{ github.token }}
   pr_number:
     description: PRまたはIssue番号
     required: true
@@ -23,29 +27,5 @@ inputs:
     required: false
 
 runs:
-  using: "composite"
-  steps:
-    - uses: actions/github-script@v7
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        PR_NUMBER: ${{ inputs.pr_number }}
-        MARKER: ${{ inputs.marker }}
-        TITLE: ${{ inputs.title }}
-        BODY: ${{ inputs.body }}
-        STATUS: ${{ inputs.status }}
-        ARTIFACT_URL: ${{ inputs.artifact_url }}
-      with:
-        script: |
-          const path = require('node:path');
-          const scriptPath = path.join(process.env.ACTION_PATH, 'comment.mjs');
-          const { upsertComment } = await import(`file://${scriptPath}`);
-          await upsertComment({
-            github,
-            context,
-            prNumber: process.env.PR_NUMBER,
-            marker: process.env.MARKER,
-            title: process.env.TITLE,
-            body: process.env.BODY,
-            status: process.env.STATUS,
-            artifactUrl: process.env.ARTIFACT_URL
-          });
+  using: node24
+  main: comment.mjs
