@@ -28,8 +28,6 @@ runs:
     - uses: ./.github/actions/use-repo
       with:
         context: ${{ inputs.context }}
-        # Bootstrap Turbo before discovering UI test packages.
-        filter: .
 
     - id: filter
       uses: ./.github/actions/refine-filter
