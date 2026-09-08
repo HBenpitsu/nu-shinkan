@@ -33,7 +33,7 @@ runs:
       shell: bash
       env:
         HUSKY: 0
-        LINT_ARGS: ${{ steps.filter.outputs.affected_args }}
+        LINT_ARGS: ${{ steps.filter.outputs.direct_args }}
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
       run: |
         mapfile -t lint_args < <(node -e 'JSON.parse(process.env.LINT_ARGS).forEach(arg => console.log(arg))')
