@@ -33,12 +33,6 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/use-repo
-      - name: 削除ツールの準備
-        shell: bash
-        env:
-          HUSKY: 0
-        run: |
-          pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install
 
       - name: 現在のPR状態の確認
         id: state
@@ -56,13 +50,16 @@ jobs:
             const cleanup = shouldCleanup(pr, process.env.MANUAL === 'true');
             core.setOutput('cleanup', String(cleanup));
             if (!cleanup) core.info('PR reopened; cleanup is a no-op.');
-
+          
       - name: PR Workersの削除
         if: ${{ steps.state.outputs.cleanup == 'true' }}
         shell: bash
         env:
+          HUSKY: 0
           PR_NUMBER: ${{ env.PR_NUMBER }}
-        run: pnpm exec turbo run undeploy:preview --only --continue=always
+        run: | 
+          pnpm install --frozen-lockfile --prefer-offline
+          pnpm exec turbo run undeploy:preview --continue=always
     
       - name: クリーンアップ失敗時のコメント投稿
         if: ${{ failure() && env.PR_NUMBER }}

@@ -67,7 +67,7 @@ runs:
         PR_NUMBER: ${{ inputs.pr_number }}
       run: |
         mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
-        pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install "${args[@]}"
+        pnpm install --frozen-lockfile --prefer-offline "${args[@]}"
         pnpm sync "${args[@]}"
         pnpm exec turbo run build "${args[@]}"
 

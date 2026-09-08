@@ -42,10 +42,9 @@ runs:
       env:
         HUSKY: 0
       run: |
-        pnpm install --frozen-lockfile --prefer-offline --filter=. --filter=@repo/scripts... --filter='./packages/*'
-        pnpm build:packages
-        # Build outputs must exist before pnpm creates the workspace CLI shims.
-        pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install --ignore-scripts --filter=. --filter=@repo/scripts... --filter='./packages/*'
+        pnpm install --frozen-lockfile --prefer-offline --filter=.
+        pnpm turbo run bootstrap
+        pnpm install --frozen-lockfile --prefer-offline --filter=@repo/scripts...
 
     - name: セットアップ完了フラグの設定
       if: env.REPO_SETUP_DONE != 'true'

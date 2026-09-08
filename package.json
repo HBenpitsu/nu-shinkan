@@ -3,18 +3,16 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
-    "build:packages": "turbo run build --filter='./packages/*'",
-    "env:sync": "pnpm sync",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
     "ui_test": "turbo run ui_test",
     "ui_test:prepare": "turbo run ui_test:prepare",
+    "env:sync": "tsx scripts/sync-env/sync.ts",
     "make:backend": "tsx scripts/make-app/make-backend-app.ts",
     "make:frontend": "tsx scripts/make-app/make-frontend-app.ts",
-    "prepare": "husky install",
-    "sync": "tsx scripts/sync-env/sync.ts"
+    "prepare": "husky install"
   },
   "devDependencies": {
     "@types/node": "26.3.0",

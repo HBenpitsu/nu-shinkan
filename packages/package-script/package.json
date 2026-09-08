@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -b --force",
-    "prepare": "tsc -b",
+    "build": "tsc -b",
+    "prepare": "pnpm build",
+    "bootstrap": "pnpm build",
     "test": "vitest src/",
     "lint": "eslint . --fix",
-    "compile": "eslint . --fix && vitest src/ --run && tsc -b"
+    "compile": "pnpm lint && pnpm test --run && pnpm build"
   },
   "bin": {
     "delete-preview-worker": "bin/delete-preview-worker.js"

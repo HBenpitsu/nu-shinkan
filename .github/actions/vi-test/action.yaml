@@ -40,7 +40,7 @@ runs:
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
         mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
 
-        pnpm install --frozen-lockfile --prefer-offline --no-optimistic-repeat-install "${install_args[@]}"
+        pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
         pnpm exec turbo run test --only "${test_args[@]}" -- --run
 
     - name: テスト失敗時のコメント投稿
