@@ -152,7 +152,7 @@ jobs:
           mapfile -t args < <(node -e 'JSON.parse(process.env.FILTER).forEach(arg => console.log(arg))')
           pnpm sync "${args[@]}"
           pnpm exec turbo run build "${args[@]}"
-      - uses: ./.github/actions/check-pr-status
+      - uses: ./.github/actions/get-pr-status
         id: pr-status
         with:
           pr_number: ${{ inputs.pr_number }}
