@@ -104,7 +104,7 @@ it("keeps an explicit empty selection empty, and does not redeploy dependents of
   const scriptOnly = refine("@repo/scripts");
   expect(scriptOnly.has_hit).toBe("false");
   expect(JSON.parse(scriptOnly.input_packages!)).toEqual(["@repo/scripts"]);
-}, 40000);
+});
 it("connects picked packages to preview metadata and deployable targets, preserving empty selections", async () => {
   const { planPreview } = await import(
     new URL("../../.github/actions/preview-deploy/plan.mjs", import.meta.url)
@@ -132,4 +132,4 @@ it("connects picked packages to preview metadata and deployable targets, preserv
   expect(taskless.packages).toContain("@repo/scripts");
   expect(refine(JSON.stringify(taskless.packages)).has_hit).toBe("false");
   expect(planPreview([], [])).toEqual({ packages: [], targets: [] });
-}, 20000);
+});
