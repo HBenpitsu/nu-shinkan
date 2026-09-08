@@ -20,14 +20,6 @@ runs:
         cache: pnpm
         cache-dependency-path: pnpm-lock.yaml
 
-    - if: env.REPO_SETUP_DONE != 'true'
-      uses: actions/cache@v4
-      with:
-        path: |
-          **/node_modules
-          !node_modules/.cache/turbo
-        key: node-modules-${{ runner.os }}-node24-${{ hashFiles('pnpm-lock.yaml') }}
-
     - name: Turboキャッシュの準備
       if: env.REPO_SETUP_DONE != 'true'
       uses: actions/cache@v4
