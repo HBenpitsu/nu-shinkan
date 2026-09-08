@@ -25,9 +25,6 @@ jobs:
       # The main flow begins here
       - id: use-app
         uses: ./.github/actions/use-app
-        with:
-          APP_ID: ${{ secrets.PR_APP_ID }}
-          APP_PRIVATE_KEY: ${{ secrets.PR_APP_PRIVATE_KEY }}
 
       - uses: actions/checkout@v4
         with:
