@@ -42,6 +42,7 @@ runs:
       env:
         HUSKY: 0
       run: |
+        pnpm prepare
         pnpm install --frozen-lockfile --prefer-offline --filter=. --filter=@repo/scripts...
 
     - name: セットアップ完了フラグの設定
