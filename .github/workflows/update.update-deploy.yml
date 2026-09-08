@@ -108,9 +108,19 @@ jobs:
       - name: Workerメタデータの解決
         id: targets
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
-        uses: ./.github/actions/resolve-worker-targets
+        uses: actions/github-script@v7
+        env:
+          PACKAGES: ${{ steps.filter.outputs.packages }}
         with:
-          packages: ${{ steps.filter.outputs.packages }}
+          script: |
+            const { execFileSync } = require('node:child_process');
+            const names = JSON.parse(process.env.PACKAGES);
+            const targets = JSON.parse(
+              execFileSync('pnpm', ['exec', 'tsx', 'scripts/workspace/configs-cli.ts', '--targets', '--', ...names], {
+                encoding: 'utf8'
+              })
+            );
+            core.setOutput('targets', JSON.stringify(targets));
       - name: 選択されたビルド依存関係のインストール
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         shell: bash

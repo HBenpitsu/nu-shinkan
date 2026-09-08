@@ -93,9 +93,24 @@ jobs:
       - name: レビューパスの選択
         id: graph
         if: ${{ steps.state.outputs.operation == 'deploy' }}
-        uses: ./.github/actions/apply-connection-graph
+        uses: actions/github-script@v7
+        env:
+          SOURCES: ${{ steps.selection.outputs.affected }}
         with:
-          sources: ${{ steps.selection.outputs.affected }}
+          script: |
+            const { execFileSync } = require('node:child_process');
+            const sources = JSON.parse(process.env.SOURCES);
+            if (!Array.isArray(sources) || sources.some(s => typeof s !== 'string' || !s)) {
+              throw new Error('Invalid sources');
+            }
+            const graph = execFileSync('pnpm', ['exec', 'tsx', 'scripts/connection-graph/build.ts'], { encoding: 'utf8' });
+            const targets = JSON.parse(
+              execFileSync('pnpm', ['exec', 'tsx', 'scripts/connection-graph/select.ts', '--graph', '-', '--', ...sources], {
+                input: graph,
+                encoding: 'utf8'
+              })
+            );
+            core.setOutput('deploy_targets', JSON.stringify(targets));
       - name: 実行可能なデプロイタスクの選択
         id: filter
         if: ${{ steps.state.outputs.operation == 'deploy' }}
@@ -106,9 +121,19 @@ jobs:
       - name: Workerメタデータの解決
         id: targets
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
-        uses: ./.github/actions/resolve-worker-targets
+        uses: actions/github-script@v7
+        env:
+          PACKAGES: ${{ steps.filter.outputs.packages }}
         with:
-          packages: ${{ steps.filter.outputs.packages }}
+          script: |
+            const { execFileSync } = require('node:child_process');
+            const names = JSON.parse(process.env.PACKAGES);
+            const targets = JSON.parse(
+              execFileSync('pnpm', ['exec', 'tsx', 'scripts/workspace/configs-cli.ts', '--targets', '--', ...names], {
+                encoding: 'utf8'
+              })
+            );
+            core.setOutput('targets', JSON.stringify(targets));
       - name: 選択されたビルド依存関係のインストール
         if: ${{ steps.filter.outputs.has_hit == 'true' }}
         shell: bash
