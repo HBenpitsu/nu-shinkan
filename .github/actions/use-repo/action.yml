@@ -29,11 +29,12 @@ runs:
           node_modules/.cache/turbo
         key: turbo-${{ runner.os }}-${{ inputs.context || github.sha }}
 
-    - name: デフォルトリポジトリ依存関係のインストール
+    - name: 標準依存関係のインストール
       shell: bash
       env:
         HUSKY: 0
       run: |
+        pnpm clean
         pnpm install --frozen-lockfile --prefer-offline --filter=.
         pnpm turbo run bootstrap
         pnpm install --frozen-lockfile --prefer-offline --filter=@repo/scripts...
