@@ -46,3 +46,24 @@ GitHub Actions 内のスクリプト実装および切り出しについては�
 2. **Git / ローカルロジック処理**: インラインヒアドキュメント (`<<'JS'`) を避け、対応する GitHub Action 直下に切り出した `.mjs` 補助スクリプトを実行する。
 3. **補助スクリプトの Action 帰属**: 補助スクリプト (`.mjs`) を導入する際は必ず自然な単位での Action 切り出し (`.github/actions/<action-name>/`) を伴う。
 
+
+## `/merge-ff` の認可
+
+PRへの `/merge-ff` コメントを受け付け、`authorize-pr-command` に `command: /merge-ff` を渡し、コメント本文と投稿者を検証する。接頭辞が一致するだけの別コマンドや追加引数は拒否する。投稿者はイベントの `comment.user.login` から取得し、再実行者やPR作成者の権限では代替しない。
+
+`authorize-pr-command` は、入力された引数なしのコマンドがPRに投稿されたことと投稿者の実効Write権限を検証し、`pr_number` と `actor` を出力する。コマンドごとの処理可否やPRのマージ状態は扱わない。`/preview` の引数解析・再実行者検証は別の契約のため、既存の受付処理を維持する。
+
+`check-pr-mergeable` は `pr-number` を受け取り、GitHubの通常マージ可否を検証して `head_sha` と `base_ref` を出力する。投稿者の認可は行わないため、`/merge-ff` では投稿者認可の後に呼び出す。
+
+Appトークンを作成する前に、通常の `GITHUB_TOKEN` で次を順番に確認する。
+
+- REST `GET /repos/{owner}/{repo}/collaborators/{username}/permission` の実効権限が Write・Maintain・Admin 相当であること。APIの `permission` はチーム・組織等からの権限を含み、Maintainや独自ロールも基底権限へ解決する。ロール名の文字列やbypass権限から許可を推測しない。
+- GraphQL `PullRequest` の同じ応答から `state`、`isDraft`、`isMergeQueueEnabled`、`mergeStateStatus`、`headRefOid`、`baseRefName` を取得する。openかつ非draftで、merge queueが無効、`mergeStateStatus` が `CLEAN`・`HAS_HOOKS`・`UNSTABLE` の場合だけ許可する。これらはGitHubがmergeableと定義する状態であり、任意の失敗チェックを独自に必須化しない。queueへの投入可能状態は直接マージの許可ではないため、queueが有効なブランチは拒否する。
+
+承認数、CODEOWNERS、会話解決、必須チェック、最新baseへの追従条件はGitHubの集約結果に委ねる。設定変更が `BLOCKED` 等の結果として反映されれば、workflowの変更なしに拒否される。AdminやAppのbypass能力による例外はなく、API失敗、欠落、不明な状態でもApp認証とpushへ進まない。
+
+認可成功後に既存のApp認証を使用し、対象baseブランチを履歴付きでcheckoutする。検証済みの `headRefOid` を出力から `HEAD_SHA` へ渡し、そのSHAをfetchして `git merge --ff-only "$HEAD_SHA"`、`git push origin "HEAD:refs/heads/${BASE_REF}"` を実行する。PRの最新headを再解決せず、merge commit・rebase・force push・lease・自動復旧は使用しない。非fast-forwardはmerge失敗、互換性のないリモート更新との競合は通常のpush失敗になる。
+
+認可とpushは原子的ではない。照会後に権限・レビュー・ルール・PR状態が変化した場合を、この方式で完全には防げない。GitHub APIの計算遅延もあり得る。不明な状態では失敗させ、再試行する場合もコマンド投稿者の現在の権限とPR状態を再照会する。App権限によっては適格なPRでもpushが拒否されるが、成功させるためのbypass経路は追加しない。
+
+API契約: [実効権限](https://docs.github.com/en/rest/collaborators/collaborators#get-repository-permissions-for-a-user)、[PRの集約状態とhead SHA](https://docs.github.com/en/graphql/reference/pulls)、[GitHub CLIの通常マージ・queue判定](https://github.com/cli/cli/blob/trunk/pkg/cmd/pr/merge/merge.go)。

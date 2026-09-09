@@ -1,0 +1,39 @@
+name: Check ordinary PR merge eligibility
+description: Require GitHub to report ordinary direct-merge eligibility; does not authorize the caller.
+inputs:
+  pr-number:
+    description: Pull request number to check
+    required: true
+outputs:
+  head_sha:
+    description: Exact PR head whose eligibility GitHub reported
+    value: ${{ steps.check.outputs.head_sha }}
+  base_ref:
+    description: Target branch from the same PR snapshot
+    value: ${{ steps.check.outputs.base_ref }}
+runs:
+  using: composite
+  steps:
+    - id: check
+      uses: actions/github-script@v8.0.0
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+      with:
+        script: |
+          const { checkMergeable } = await import(`${process.env.ACTION_PATH}/policy.mjs`);
+          const number = Number(process.env.PR_NUMBER);
+          if (!Number.isSafeInteger(number) || number <= 0) throw Error('Invalid PR number');
+          const { repository } = await github.graphql(`
+            query($owner: String!, $repo: String!, $number: Int!) {
+              repository(owner: $owner, name: $repo) {
+                pullRequest(number: $number) {
+                  state isDraft isMergeQueueEnabled mergeStateStatus headRefOid baseRefName
+                }
+              }
+            }
+          `, { ...context.repo, number });
+          const target = checkMergeable(repository?.pullRequest);
+          core.setOutput('head_sha', target.head_sha);
+          core.setOutput('base_ref', target.base_ref);
+          core.info('Ordinary PR merge eligibility verified by GitHub.');

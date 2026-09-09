@@ -9,7 +9,7 @@ jobs:
     if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/merge-ff')
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
     steps:
       - name: ワークフローアクションのチェックアウト
@@ -19,10 +19,21 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
-      # Put reaction early
+      - name: PRコマンド投稿者の権限検証
+        id: command
+        uses: ./.github/actions/authorize-pr-command
+        with:
+          command: /merge-ff
+
+      - name: 通常のPRマージ可否の検証
+        id: authorized
+        uses: ./.github/actions/check-pr-mergeable
+        with:
+          pr-number: ${{ steps.command.outputs.pr_number }}
+
       - uses: ./.github/actions/comment-reaction
 
-      # The main flow begins here
+      # Mint write credentials only after ordinary merge eligibility is established.
       - id: use-app
         uses: ./.github/actions/use-app
         with:
@@ -32,35 +43,16 @@ jobs:
       - uses: actions/checkout@v6.1.0
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
+          ref: refs/heads/${{ steps.authorized.outputs.base_ref }}
+          fetch-depth: 0
 
-      - name: PRメタデータの解決
-        id: pr-metadata
-        uses: actions/github-script@v8.0.0
-        with:
-          script: |
-            const prNumber = context.payload.issue.number;
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-            });
-
-            core.setOutput('base_ref', pr.base.ref);
-
-      - name: ファストフォワードマージの実行
+      - name: 検証済みコミットのファストフォワードマージ
         shell: bash
         env:
-          PR_NUMBER: ${{ github.event.issue.number }}
-          BASE_REF: ${{ steps.pr-metadata.outputs.base_ref }}
+          HEAD_SHA: ${{ steps.authorized.outputs.head_sha }}
+          BASE_REF: ${{ steps.authorized.outputs.base_ref }}
         run: |
-          original_sha=$(git rev-parse HEAD)
-          trap 'git switch --detach "$original_sha"' EXIT
-
           set -euo pipefail
-
-          git fetch origin
-          git fetch origin "${BASE_REF}"
-          git fetch origin "pull/${PR_NUMBER}/head:pr-${PR_NUMBER}-head"
-          git checkout -B "${BASE_REF}" "origin/${BASE_REF}"
-          git merge --ff-only "pr-${PR_NUMBER}-head"
-          git push origin "${BASE_REF}"
+          git fetch --no-tags origin "$HEAD_SHA"
+          git merge --ff-only "$HEAD_SHA"
+          git push origin "HEAD:refs/heads/${BASE_REF}"
