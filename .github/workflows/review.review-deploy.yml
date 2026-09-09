@@ -29,6 +29,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/use-repo
+        with:
+          context: preview-${{ env.PR_NUMBER }}
       - parallel:
           - uses: ./.github/actions/ui-test
             with:

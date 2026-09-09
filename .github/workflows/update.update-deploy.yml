@@ -56,6 +56,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/use-repo
+        with:
+          context: ${{ env.CHANNEL }}
       - parallel:
         - id: unit-tests
           uses: ./.github/actions/vi-test

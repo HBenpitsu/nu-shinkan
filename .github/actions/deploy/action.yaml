@@ -12,10 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps: 
-    - uses: ./.github/actions/use-repo
-      with:
-        context: ${{ inputs.channel }}
-
     - id: filter
       uses: ./.github/actions/filter-util
       with:
