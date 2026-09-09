@@ -1,0 +1,31 @@
+name: 結果コメント
+description: PRまたはIssueに結果コメントを投稿または更新します。
+
+inputs:
+  token:
+    description: GitHub API呼び出し用トークン
+    required: false
+    default: ${{ github.token }}
+  pr_number:
+    description: PRまたはIssue番号
+    required: true
+  marker:
+    description: コメント更新判定用のユニークマーカータグ（例 ui_test-report）
+    required: false
+    default: result-comment
+  title:
+    description: コメントタイトル
+    required: false
+  body:
+    description: コメント本文
+    required: false
+  status:
+    description: ステータス文字列（success、failure 等）
+    required: false
+  artifact_url:
+    description: オプションのアーティファクトダウンロードURL
+    required: false
+
+runs:
+  using: node24
+  main: comment.mjs

@@ -45,7 +45,7 @@ pnpm exec tsx scripts/connection-graph/build.ts |
 
 起点には呼び出し側でパッケージ依存関係による影響先まで含める。差分検出・manual-pick の受付・`scripts.deploy` による実行対象の絞り込みは呼び出し側の責務とする。
 
-`.github/actions/apply-connection-graph` が両CLIをパイプ用の入出力で接続し、選定されたパッケージ名をJSONのaction出力へ渡す。内部の `graph.ts` は外部向けのimport APIではない。
+`.github/workflows/review.review-deploy.yml` と `.github/workflows/review.pick-deploy.yml` 内の `actions/github-script@v7` が両CLIを標準入出力で接続し、選定されたパッケージ名をJSONのステップ出力 `deploy_targets` へ渡す。内部の `graph.ts` は外部向けのimport APIではない。
 
 ## 内部構成
 

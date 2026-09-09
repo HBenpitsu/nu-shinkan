@@ -128,3 +128,32 @@ it("isolates its graph from input, serialized output, and selected result mutati
   graph.selectReviewTargets(["api"])[0] = "changed";
   expect(graph.selectReviewTargets(["api"])).toEqual(["api", "web"]);
 });
+
+it.each([
+  null,
+  {},
+  { packages: "api", edges: [], reviewEntries: [] },
+  { packages: [""], edges: [], reviewEntries: [] },
+  { packages: [1], edges: [], reviewEntries: [] },
+  { packages: [], edges: {}, reviewEntries: [] },
+  { packages: ["api"], edges: [null], reviewEntries: [] },
+  { packages: ["api"], edges: [["api"]], reviewEntries: [] },
+  { packages: ["api"], edges: [["api", "api", "api"]], reviewEntries: [] },
+  { packages: ["api"], edges: [["api", 1]], reviewEntries: [] },
+  { packages: [], edges: [], reviewEntries: "api" },
+  { packages: [], edges: [], reviewEntries: [null] },
+])("rejects invalid graph structure: %j", (value) => {
+  expect(() => ConnectionGraph.fromJSON(value)).toThrow(
+    "Invalid connection graph",
+  );
+});
+
+it("rejects duplicate package names in graph input", () => {
+  expect(() =>
+    ConnectionGraph.fromJSON({
+      packages: ["api", "api"],
+      edges: [],
+      reviewEntries: [],
+    }),
+  ).toThrow("Duplicate workspace package name");
+});

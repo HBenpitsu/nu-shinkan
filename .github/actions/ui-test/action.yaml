@@ -1,25 +1,26 @@
-name: Run UI Test
-description: Run UI tests for the project.
+name: UIテスト
+description: プロジェクトのUIテストを実行します。
 
 inputs:
   context:
-    description: Test context. Test results that share the same context will be cached.
+    description: テストコンテキスト。同一コンテキストを共有するテスト結果はturboによりキャッシュされます。
     required: false
   filter:
-    description: Turbo filters as text or a JSON array; [] selects no UI tests
+    description: テスト対象を絞り込むフィルタオプションのJSON配列．[]は明示的に空を指定します．
     required: false
   pr_number:
     description: |
-      PR or issue number. Defaults to the PR or issue from the triggering event. 
-      Commenting requires pull-requests write (PR) or issues write (issue) permission.
+      PRまたはIssue番号。既定値はトリガーイベントのPRまたはIssue．
+      指定された場合は結果をコメントで通知します．
+      コメント投稿には pull-requests write または issues write 権限が必要です．
     required: false
   artifact_name:
-    description: Artifact name. Use a unique name for each invocation within a workflow run.
+    description: アップロードするアーティファクトの名前．
     default: ui_test-reports
 
 outputs:
   artifact_url:
-    description: Download link for the uploaded UI test reports
+    description: アップロードされたUIテストレポートのダウンロードリンク
     value: ${{ steps.upload.outputs.artifact-url }}
 
 runs:
@@ -28,35 +29,37 @@ runs:
     - uses: ./.github/actions/use-repo
       with:
         context: ${{ inputs.context }}
-        # Bootstrap Turbo before discovering UI test packages.
-        filter: .
 
-    - name: Prepare Filter
-      id: filter
-      uses: ./.github/actions/refine-filter
+    - id: filter
+      uses: ./.github/actions/filter-util
       with:
         task: ui_test
         filter: ${{ inputs.filter }}
 
-    - name: Run UI Test
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-browsers-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+    - name: UIテストの実行
       id: tests
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
         HUSKY: 0
-        TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
+        TEST: PACKAGE
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
+        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
       run: |
         mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
         # Playwright installs shared OS packages via apt; serialize across workspaces.
         pnpm exec turbo run ui_test:prepare --concurrency=1 --only "${test_args[@]}"
         pnpm exec turbo run ui_test --only "${test_args[@]}"
 
-    - name: Collect UI test reports
+    - name: UIテストレポートの収集
       id: collect
       if: ${{ !cancelled() && (steps.tests.outcome == 'success' || steps.tests.outcome == 'failure') }}
       shell: bash
@@ -64,7 +67,7 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
       run: node "$ACTION_PATH/collect-ui_test-reports.mjs"
 
-    - name: Upload UI test reports
+    - name: UIテストレポートのアップロード
       id: upload
       if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
       uses: actions/upload-artifact@v4
@@ -73,16 +76,24 @@ runs:
         path: ui_test-reports/
         if-no-files-found: warn
 
-    - name: Upsert PR or issue comment
+    - name: PRまたはIssueコメントの更新
       if: ${{ !cancelled() && steps.upload.outputs.artifact-url != '' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
-      uses: actions/github-script@v7
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
-        ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
-        TEST_OUTCOME: ${{ steps.tests.outcome }}
+      uses: ./.github/actions/comment-result
       with:
-        script: |
-          const path = require('node:path');
-          const upsertComment = require(path.join(process.env.ACTION_PATH, 'upsert-comment.cjs'));
-          await upsertComment({ github, context });
+        pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        marker: ui_test-report
+        title: Playwright UI test Report
+        status: ${{ steps.tests.outcome }}
+        artifact_url: ${{ steps.upload.outputs.artifact-url }}
+
+    - name: テスト失敗時のコメント投稿
+      if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
+      uses: ./.github/actions/comment-result
+      with:
+        pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        marker: ui_test-failure
+        title: Playwright UI Test Failure
+        status: failure
+        body: |
+          Playwright UI tests failed during workflow execution. Please check the workflow run logs for detailed failure traces.
+

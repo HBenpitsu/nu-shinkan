@@ -1,17 +1,18 @@
-name: Run Unit Test (vitest)
-description: Run unit tests for the project.
+name: テスト (Vitest)
+description: プロジェクト単位のテストを実行します。
 
 inputs:
   context:
-    description: Test context. Test results that share the same context will be cached.
+    description: テストコンテキスト。同一コンテキストを共有するテスト結果は turbo によってキャッシュされます。
     required: false
   filter:
-    description: Turbo filters as text or a JSON array; [] selects no tests
+    description: テスト対象を絞り込むフィルタオプションのJSON配列．[]は明示的に空を指定します．
     required: false
   pr_number:
     description: |
-      PR or issue number. Defaults to the PR or issue from the triggering event. 
-      Commenting requires pull-requests write (PR) or issues write (issue) permission.
+      PRまたはIssue番号。既定値はトリガーイベントのPRまたはIssue．
+      指定された場合は結果をコメントで通知します．
+      コメント投稿には pull-requests write または issues write 権限が必要です．
     required: false
 
 runs:
@@ -20,40 +21,35 @@ runs:
     - uses: ./.github/actions/use-repo
       with:
         context: ${{ inputs.context }}
-        # Bootstrap Turbo before discovering test packages.
-        filter: .
 
-    - name: Prepare Filter
-      id: filter
-      uses: ./.github/actions/refine-filter
+    - id: filter
+      uses: ./.github/actions/filter-util
       with:
         task: test
         filter: ${{ inputs.filter }}
 
-    - name: Run Vitest tests
-      id: tests
+    - id: tests
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
         HUSKY: 0
-        TEST_ARGS: ${{ steps.filter.outputs.affected_args }}
+        TEST: PACKAGE
         DEPS_ARGS: ${{ steps.filter.outputs.deps_args }}
+        TEST_ARGS: ${{ steps.filter.outputs.direct_args }}
       run: |
-        mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
         mapfile -t install_args < <(node -e 'JSON.parse(process.env.DEPS_ARGS).forEach(arg => console.log(arg))')
+        mapfile -t test_args < <(node -e 'JSON.parse(process.env.TEST_ARGS).forEach(arg => console.log(arg))')
 
         pnpm install --frozen-lockfile --prefer-offline "${install_args[@]}"
-        pnpm install --frozen-lockfile --prefer-offline "${test_args[@]}"
         pnpm exec turbo run test --only "${test_args[@]}" -- --run
 
-    - name: Comment on test failure
+    - name: テスト失敗時のコメント投稿
       if: ${{ failure() && steps.tests.outcome == 'failure' && (inputs.pr_number || github.event.pull_request.number || github.event.issue.number) }}
-      uses: actions/github-script@v7
-      env:
-        ACTION_PATH: ${{ github.action_path }}
-        PR_NUMBER: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+      uses: ./.github/actions/comment-result
       with:
-        script: |
-          const path = require('node:path');
-          const commentTestFailure = require(path.join(process.env.ACTION_PATH, 'comment-test-failure.cjs'));
-          await commentTestFailure({ github, context });
+        pr_number: ${{ inputs.pr_number || github.event.pull_request.number || github.event.issue.number }}
+        marker: vi_test-failure
+        title: Vitest Unit Test Failure
+        status: failure
+        body: |
+          Vitest unit tests failed during workflow execution. Please check the workflow run logs for detailed failure traces.

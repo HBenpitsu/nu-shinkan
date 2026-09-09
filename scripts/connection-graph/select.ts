@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { ConnectionGraph } from "./graph.js";
+import { validateSources } from "./validation.js";
 
 // Main Logic
 
@@ -16,9 +17,7 @@ function main(): void {
   const graph = ConnectionGraph.fromJSON(
     JSON.parse(readFileSync(values.graph === "-" ? 0 : values.graph, "utf8")),
   );
-  const unknown = sources.filter((name) => !graph.hasPackage(name));
-  if (unknown.length)
-    throw new Error(`Unknown packages: ${unknown.join(", ")}`);
+  validateSources(graph, sources);
   console.log(JSON.stringify(graph.selectReviewTargets(sources), null, 2));
 }
 

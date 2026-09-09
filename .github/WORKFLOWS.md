@@ -16,7 +16,7 @@
 
 fullは全件、diffは直接変更されたパッケージ、pickは指定パッケージをテスト対象にする。デプロイ対象は依存関係による影響先まで含め、review/pickではさらにconnection graphでreview入口からの利用経路を選ぶ。
 
-`refine-filter` は指定タスクを持つパッケージだけに絞り、`packages`、依存を含むインストール引数 `deps_args`、正確な実行引数 `affected_args`、`has_hit` を出力する。名前に反して `affected_args` は影響先を再展開しない。空文字は全件、JSONの `[]` は空対象であり、空対象を全件へ展開しない。
+`filter-util` は指定タスクを持つパッケージだけに絞り、`packages`、依存を含むインストール引数 `deps_args`、正確な実行引数 `affected_args`、`has_hit` を出力する。名前に反して `affected_args` は影響先を再展開しない。空文字は全件、JSONの `[]` は空対象であり、空対象を全件へ展開しない。
 
 `workspace/configs-cli.ts --targets` が選定対象へpathとWorker基底名を付与する。その結果を `TARGETS` に保持し、設定同期・build・deployへ渡す。テストactionは各対象の依存を準備するため、同じ作業領域でのインストール競合を避けて順番に実行する。UIテストはPlaywrightブラウザを導入して実行し、HTMLレポートをartifactへ保存する。
 
@@ -37,3 +37,12 @@ cleanupは既定ブランチをcheckoutし、各パッケージの `undeploy:pre
 GitHub Environmentsの `preview`、`staging`、`release` に `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を設定する。retag・merge用のutility workflowは既存のGitHub App資格情報を使用する。
 
 `on-pr.yml` のtooling jobでscriptsのテストと型検査を実行する。`nightly.yml` は毎日UTC 00:00に既定ブランチの型検査・全workspaceの単体テスト・UIテストを実行する。ローカルでは外部APIをmockしてPR状態・権限・部分失敗を検証する。GitHub上の排他、Environment権限、Cloudflareへのdeployとcleanupは実環境での確認が必要になる。
+
+## スクリプト記述と Action 切り出し標準
+
+GitHub Actions 内のスクリプト実装および切り出しについては、[ADR: GitHub Actions スクリプト実装ガイドライン](../docs/ADR/workflow-script-guidelines.md) に基いて構成する。
+
+1. **GitHub API / PR・Issue コメント / Output 設定**: `actions/github-script@v7` を使用する。
+2. **Git / ローカルロジック処理**: インラインヒアドキュメント (`<<'JS'`) を避け、対応する GitHub Action 直下に切り出した `.mjs` 補助スクリプトを実行する。
+3. **補助スクリプトの Action 帰属**: 補助スクリプト (`.mjs`) を導入する際は必ず自然な単位での Action 切り出し (`.github/actions/<action-name>/`) を伴う。
+
