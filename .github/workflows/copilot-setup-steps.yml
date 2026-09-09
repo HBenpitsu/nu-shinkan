@@ -1,0 +1,27 @@
+name: Copilot Code Review Setup
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-code-review.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-code-review.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout product
+        uses: actions/checkout@v6
+
+      - name: Checkout review context
+        uses: actions/checkout@v6
+        with:
+          repository: nu-shinkan-project/context
+          path: .context
