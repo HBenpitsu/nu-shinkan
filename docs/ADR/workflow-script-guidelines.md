@@ -39,3 +39,7 @@ GitHub Actions ワークフローおよび Composite Action において、複�
 ## 2026-09-09: Action ランタイムの更新
 
 Node 20 の廃止に対応し、GitHub API 操作には `actions/github-script@v8.0.0` を使用する。上記の v7 指定を更新するものであり、スクリプトの選定基準と Action への帰属原則は維持する。
+
+## 2026-09-09: GitHub Script v9 への更新
+
+GitHub API 操作には `actions/github-script@v9` を使用する。上記の v8 指定を更新する。既存の script には `require('@actions/github')` や注入される `getOctokit` と競合する宣言がないため、script 本体の変更は不要。スクリプトの選定基準と Action への帰属原則は維持する。

@@ -15,7 +15,7 @@ runs:
   using: composite
   steps:
     - id: authorize
-      uses: actions/github-script@v8.0.0
+      uses: actions/github-script@v9
       env:
         ACTION_PATH: ${{ github.action_path }}
         COMMAND: ${{ inputs.command }}

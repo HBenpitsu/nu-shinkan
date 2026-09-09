@@ -6,8 +6,8 @@ outputs:
     description: リポジトリ用 GitHub App トークン
     value: ${{ steps.app-token.outputs.token }}
 inputs:
-  app_id:
-    description: GitHub App ID
+  client_id:
+    description: GitHub App Client ID
     required: true
   app_private_key:
     description: GitHub App private key
@@ -18,13 +18,13 @@ runs:
     - name: GitHub App認証情報の検証
       shell: bash
       env:
-        APP_ID: ${{ inputs.app_id }}
+        APP_CLIENT_ID: ${{ inputs.client_id }}
         APP_PRIVATE_KEY: ${{ inputs.app_private_key }}
       run: |
         set -euo pipefail
 
-        if [[ -z "${APP_ID}" ]]; then
-          echo "Missing required secret: APP_ID" >&2
+        if [[ -z "${APP_CLIENT_ID}" ]]; then
+          echo "Missing required secret: APP_CLIENT_ID" >&2
           exit 1
         fi
 
@@ -36,7 +36,7 @@ runs:
     - id: app-token
       uses: actions/create-github-app-token@v3.2.0
       with:
-        app-id: ${{ inputs.app_id }}
+        client-id: ${{ inputs.client_id }}
         private-key: ${{ inputs.app_private_key }}
         owner: ${{ github.repository_owner }}
         repositories: ${{ github.event.repository.name }}

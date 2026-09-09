@@ -1,5 +1,7 @@
 # GitHub Actions dependency audit — 2026-09-09
 
+> Historical audit before the current-major modernization. The follow-up below supersedes the version deferrals and pending Client ID migration; the original findings are retained as history.
+
 This audit covers every tracked YAML file, all 11 workflows (including the reusable full-deploy workflow), and all 11 repository-local composite actions. A recursive hidden-file search found no additional external `uses:` references outside `.github/`. There are 28 external references to seven actions. Local workflow/action calls are not external dependencies; no external reusable workflows or Docker actions were found.
 
 The original references were floating major tags, not commit pins. Their exact historical execution commits cannot be recovered from repository files; that requires run logs. The selected references use explicit stable release tags so Dependabot can propose patch and minor updates as well as majors. Release tags are not universally immutable: full commit SHA pinning remains an optional supply-chain hardening follow-up.
@@ -56,3 +58,27 @@ These are ordinary PRs to the default branch, subject to repository review rules
 `actionlint` is unavailable, and shell DNS resolution prevents downloading validators; no complete workflow/Dependabot schema validation or hosted run was performed. Release checks used official upstream pages through the browser. Reviewed release notes are not a transitive vulnerability scan or proof that releases are vulnerability-free.
 
 After merge, check Dependabot's update log for both workflow and composite discovery. Confirm checkout cleanup/App-authenticated Git, pnpm 11 setup and cache restore/save, report links and PR comments on hosted runners. Exercise write/deploy operations through the existing authorized process. Dependabot/fork PRs may lack deployment secrets; preserve that restriction rather than granting elevated access to make checks pass.
+
+## Current-major modernization follow-up — 2026-09-09
+
+All executable references now use the requested major tags: checkout v7 (17), setup-node v7 (1), cache v6 (2), github-script v9 (6), and upload-artifact v7 (1). These replace the earlier release selections and ESM deferrals. create-github-app-token remains at v3.2.0; pnpm/action-setup remains at v6.1.0.
+
+- Checkout: neither `pull_request_target` nor `workflow_run` is used, so the fork-checkout restriction needs no migration or unsafe opt-out. Existing checkout inputs remain identical. [v7 release](https://github.com/actions/checkout/releases/tag/v7.0.0).
+- Setup Node: no caller uses `registry-url`; removal of the dummy `NODE_AUTH_TOKEN` export needs no caller change. Node 24 and explicit pnpm caching remain identical. [v7 release](https://github.com/actions/setup-node/releases/tag/v7.0.0).
+- Cache: callers only use ordinary `uses`/`with` inputs. Internal ESM migration requires no workflow changes; paths and keys remain identical. [v6 release](https://github.com/actions/cache/releases/tag/v6.0.0).
+- GitHub Script: all six bodies and their local imports were inspected. None requires `@actions/github`, accesses its internals, or declares a conflicting `getOctokit`. Script bodies remain byte-for-byte unchanged. [v9 migration](https://github.com/actions/github-script/releases/tag/v9.0.0).
+- Artifact: the report directory still uploads as an archive with the same name, path, missing-file behavior and `artifact-url` output. Direct upload is not enabled. [v7 release](https://github.com/actions/upload-artifact/releases/tag/v7.0.0).
+- App authentication: all four callers pass `secrets.GIT_OPS_APP_CLIENT_ID` through the composite's required `client_id` input to upstream `client-id`. Composite actions receive secrets through inputs. The old numeric ID is not forwarded; its secret has no remaining code references. Private key, owner, repositories, permissions and token revocation behavior remain unchanged. Repository/organization settings were not changed or deleted. [Input contract](https://github.com/actions/create-github-app-token/blob/v3.2.0/action.yml).
+- Runners: every job with `runs-on` uses GitHub-hosted `ubuntu-latest`; no self-hosted runner configuration or Node runtime override is needed.
+
+Validation performed for this follow-up:
+
+- Parsed all 37 tracked YAML files with YAML 2.9.0; resolved all 46 local `uses` paths.
+- Compared parsed `.github` YAML against HEAD, allowing only the requested Action versions and Client ID migration; no other structural changes occurred.
+- Compiled all six GitHub Script bodies with v9's injected parameter names, including `getOctokit`; no syntax conflicts.
+- Verified all 27 target Action references and all four Client ID caller paths; no old executable major or numeric App ID reference remains. Earlier ADR version references and the audit above are intentional historical records.
+- `pnpm --filter @repo/github-actions test --run`: 4 files, 61 tests passed.
+- `actionlint` 1.7.12: merge-ff, all three retag workflows, nightly and Copilot setup passed. The other five workflows produce nine diagnostics for existing `queue`/`parallel` syntax, identical before and after this change. Those features are documented in the [official workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax); this validator does not recognize them, so full actionlint validation is not claimed.
+- `git diff --check` passed. No replacement workflow tests or dependencies were added.
+
+No hosted workflow was dispatched. Actual App token issuance, checkout, cache service interaction, artifact upload, GitHub API calls and deployment still require a GitHub-hosted run with the configured credentials.
