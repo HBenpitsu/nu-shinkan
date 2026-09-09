@@ -35,3 +35,7 @@ GitHub Actions ワークフローおよび Composite Action において、複�
 ## 影響 (Consequences)
 - ワークフロー YAML から長いインライン JS ヒアドキュメントが排除され、可読性と安全性が向上する。
 - 補助スクリプトが GitHub Action 単位でディレクトリカプセル化され、再利用性とメンテナンス性が高まる。
+
+## 2026-09-09: Action ランタイムの更新
+
+Node 20 の廃止に対応し、GitHub API 操作には `actions/github-script@v8.0.0` を使用する。上記の v7 指定を更新するものであり、スクリプトの選定基準と Action への帰属原則は維持する。

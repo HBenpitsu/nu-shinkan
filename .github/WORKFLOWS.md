@@ -42,7 +42,7 @@ GitHub Environmentsの `preview`、`staging`、`release` に `CLOUDFLARE_API_TOK
 
 GitHub Actions 内のスクリプト実装および切り出しについては、[ADR: GitHub Actions スクリプト実装ガイドライン](../docs/ADR/workflow-script-guidelines.md) に基いて構成する。
 
-1. **GitHub API / PR・Issue コメント / Output 設定**: `actions/github-script@v7` を使用する。
+1. **GitHub API / PR・Issue コメント / Output 設定**: `actions/github-script@v8.0.0` を使用する。
 2. **Git / ローカルロジック処理**: インラインヒアドキュメント (`<<'JS'`) を避け、対応する GitHub Action 直下に切り出した `.mjs` 補助スクリプトを実行する。
 3. **補助スクリプトの Action 帰属**: 補助スクリプト (`.mjs`) を導入する際は必ず自然な単位での Action 切り出し (`.github/actions/<action-name>/`) を伴う。
 
