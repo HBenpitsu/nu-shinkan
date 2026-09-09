@@ -33,6 +33,8 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/use-repo
+        with:
+          context: preview-${{ env.PR_NUMBER }}
 
       - name: 現在のPR状態の確認
         id: state

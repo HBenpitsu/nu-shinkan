@@ -56,20 +56,19 @@ jobs:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
       - uses: ./.github/actions/use-repo
+        with:
+          context: preview-${{ env.PR_NUMBER }}
       - id: cmd
         uses: ./.github/actions/parse-preview-command
       - parallel:
           - uses: ./.github/actions/ui-test
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: ${{ steps.cmd.outputs.picked }}
           - uses: ./.github/actions/vi-test
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: ${{ steps.cmd.outputs.picked }}
           - uses: ./.github/actions/lint
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: ${{ steps.cmd.outputs.picked }}
       - id: preview
         uses: ./.github/actions/preview-deploy

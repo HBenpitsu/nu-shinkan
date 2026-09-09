@@ -29,10 +29,6 @@ outputs:
 runs:
   using: "composite"
   steps: 
-    - uses: ./.github/actions/use-repo
-      with:
-        context: preview-${{ inputs.pr_number }}
-
     - name: deploy対象の絞り込み
       id: filter
       uses: ./.github/actions/filter-util

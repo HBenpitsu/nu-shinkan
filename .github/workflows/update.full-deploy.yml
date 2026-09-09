@@ -40,19 +40,15 @@ jobs:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false
       - uses: ./.github/actions/use-repo
+        with:
+          context: ${{ env.CHANNEL }}
       - parallel:
         - id: unit-tests
           uses: ./.github/actions/vi-test
-          with:
-            context: ${{ env.CHANNEL }}
         - id: ui-tests
           uses: ./.github/actions/ui-test
-          with:
-            context: ${{ env.CHANNEL }}
         - id: lint
           uses: ./.github/actions/lint
-          with:
-            context: ${{ env.CHANNEL }}
       - name: デプロイの実行
         uses: ./.github/actions/deploy
         with:

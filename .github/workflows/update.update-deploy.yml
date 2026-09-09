@@ -56,22 +56,21 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/use-repo
+        with:
+          context: ${{ env.CHANNEL }}
       - parallel:
         - id: unit-tests
           uses: ./.github/actions/vi-test
           with:
             filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
-            context: ${{ env.CHANNEL }}
         - id: ui-tests
           uses: ./.github/actions/ui-test
           with:
             filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
-            context: ${{ env.CHANNEL }}
         - id: lint
           uses: ./.github/actions/lint
           with:
             filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
-            context: ${{ env.CHANNEL }}
       - name: デプロイの実行
         uses: ./.github/actions/deploy
         with:
