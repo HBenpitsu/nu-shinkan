@@ -2,7 +2,7 @@
 
 ## このバックログの使い方
 
-CIリソース状況によってCLI起動を含むテストがタイムアウトする問題を扱う。2026-09-09時点の静的調査に基づく実行担当者への引き継ぎであり、全項目は未着手。コード・方針の実装を終えた記録ではない。タスクを受け取った担当者はリポジトリの現状との差分を確認する。
+CIリソース状況によってCLI起動を含むテストがタイムアウトする問題を扱う。2026-09-09時点の静的調査に基づく実行担当者への引き継ぎである。B01の文書整備は2026-09-09に完了し、B02〜B08は未着手。コード改修・テスト実行を終えた記録ではない。タスクを受け取った担当者はリポジトリの現状との差分を確認する。
 
 作業前に `AGENTS.md` に従いdocs・instructions・skillsを探索し、適用される文書を読む。pnpmを使い、全体検証は既存のルートスクリプトを優先する。`.agents/` を編集する際は `.agents/README.md` を読む。
 
@@ -16,8 +16,10 @@ B01で継続的な方針を文書化する。続いてB02〜B05で対象を改�
 
 ## B01: テスト方針と作例の整合
 
+- 状態：完了（2026-09-09）。[テスト方針](../testing-policy.md)と[エージェント向け指示](../../.agents/instructions/testing/test-scope.md)を新設し、2つの作例を更新した。
+
 - 優先度：P1。依存：なし。
-- 背景：現在 `docs/snippets/script_entrypoint.md` はVITEST分岐でmainを抑制する作例であり、CLIをimportしない新方針と整合しない。
+- 背景：変更前の `docs/snippets/script_entrypoint.md` はVITEST分岐でmainを抑制する作例であり、CLIをimportしない方針と整合していなかった。
 - 対象：`docs/testing-policy.md` と `.agents/instructions/testing/test-scope.md` を新設し、`docs/snippets/script_entrypoint.md` と `ts_export_for_test.md` を更新する。
 - 作業：内部ロジックだけを検証する規則とWorkflowテスト追加禁止を記す。CLIと内部モジュールを別ファイルで例示する。指示冒頭に適用条件を記す。AGENTS/READMEのindexや保護ADRは変更しない。
 - 完了条件：会話なしで判断できる文書、正しいリンク、CLIテストを勧めない作例が揃う。文書用テストは追加しない。
