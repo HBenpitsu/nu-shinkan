@@ -41,7 +41,8 @@ runs:
         path: ~/.cache/ms-playwright
         key: playwright-browsers-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-    - id: tests
+    - name: UIテストの実行
+      id: tests
       if: ${{ steps.filter.outputs.has_hit == 'true' }}
       shell: bash
       env:
