@@ -45,6 +45,16 @@ const packages = [
       }),
   ),
 ];
+const selectionReason = explicitEmpty
+  ? "explicit empty selection"
+  : input_packages.length === 0
+    ? "no matching packages"
+    : packages.length === 0
+      ? "matching packages have no registered task"
+      : "registered tasks selected";
+console.error(
+  `[filter-util] task=${task} matched=${input_packages.length} selected=${packages.length}: ${selectionReason}`,
+);
 appendFileSync(
   process.env.GITHUB_OUTPUT,
   [

@@ -1,0 +1,13 @@
+{
+  "name": "@repo/github-actions",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest actions/"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.0",
+    "vitest": "^4.1.11"
+  }
+}

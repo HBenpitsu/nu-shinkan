@@ -9,8 +9,6 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview --mode development",
-    "test": "vitest",
-    "ui_test": "playwright test",
     "resolve-deps": "playwright install --with-deps",
     "ui_test:report": "playwright show-report --host 0.0.0.0",
     "build": "app-build",

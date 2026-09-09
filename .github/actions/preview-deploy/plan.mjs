@@ -35,6 +35,7 @@ if (
     JSON.parse(process.env.PACKAGES),
     JSON.parse(process.env.PICKED || "[]"),
   );
+  console.error(`[preview-plan] selected=${plan.packages.length} targets=${plan.targets.length}`);
   appendFileSync(
     process.env.GITHUB_OUTPUT,
     `packages=${JSON.stringify(plan.packages)}\ntargets=${JSON.stringify(plan.targets)}\n`,
