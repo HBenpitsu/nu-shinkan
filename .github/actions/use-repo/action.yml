@@ -11,10 +11,10 @@ runs:
   using: "composite"
   steps:
     - if: env.REPO_SETUP_DONE != 'true'
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v6.1.0
 
     - if: env.REPO_SETUP_DONE != 'true'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6.5.0
       with:
         node-version: '24'
         cache: pnpm
@@ -22,7 +22,7 @@ runs:
 
     - name: Turboキャッシュの準備
       if: env.REPO_SETUP_DONE != 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@v5.1.0
       with:
         path: |
           .turbo

@@ -10,3 +10,12 @@ updates:
    directory: "/"
    schedule:
      interval: weekly
+
+ # Root covers workflows; nested composite actions need their own directories.
+ - package-ecosystem: "github-actions"
+   directories:
+     - "/"
+     - "/.github/actions/*"
+   schedule:
+     interval: weekly
+   open-pull-requests-limit: 5

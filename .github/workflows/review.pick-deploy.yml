@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: コメント権限検証とPRリビジョン取得
         id: request
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8.0.0
         with:
           script: |
             if (!/^\/preview(?:\s|$)/.test(context.payload.comment.body)) return;
@@ -51,7 +51,7 @@ jobs:
       HEAD_SHA: ${{ needs.receive_command.outputs.head_sha }}
       BASE_SHA: ${{ needs.receive_command.outputs.base_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.1.0
         with:
           ref: ${{ env.HEAD_SHA }}
           persist-credentials: false

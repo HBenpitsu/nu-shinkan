@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout product
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.1.0
 
       - name: Checkout review context
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.1.0
         with:
           repository: nu-shinkan-project/context
           path: .context

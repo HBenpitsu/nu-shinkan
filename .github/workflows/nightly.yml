@@ -8,7 +8,7 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.1.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/use-repo
