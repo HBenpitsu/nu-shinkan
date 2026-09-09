@@ -34,15 +34,12 @@ jobs:
       - parallel:
           - uses: ./.github/actions/ui-test
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
           - uses: ./.github/actions/vi-test
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
           - uses: ./.github/actions/lint
             with:
-              context: preview-${{ env.PR_NUMBER }}
               filter: "[${{ env.BASE_SHA }}...${{ env.HEAD_SHA }}]"
       - id: preview
         uses: ./.github/actions/preview-deploy
