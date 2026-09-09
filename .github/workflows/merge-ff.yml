@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     steps:
       - name: ワークフローアクションのチェックアウト
-        uses: actions/checkout@v6.1.0
+        uses: actions/checkout@v7
         with:
           sparse-checkout: /.github/
           sparse-checkout-cone-mode: false
@@ -37,10 +37,10 @@ jobs:
       - id: use-app
         uses: ./.github/actions/use-app
         with:
-          app_id: ${{ secrets.GIT_OPS_APP_ID }}
+          client_id: ${{ secrets.GIT_OPS_APP_CLIENT_ID }}
           app_private_key: ${{ secrets.GIT_OPS_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v6.1.0
+      - uses: actions/checkout@v7
         with:
           token: ${{ steps.use-app.outputs.TOKEN }}
           ref: refs/heads/${{ steps.authorized.outputs.base_ref }}

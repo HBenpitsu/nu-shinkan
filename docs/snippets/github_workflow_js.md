@@ -1,11 +1,11 @@
 
 ## GitHub Actions: github-script による GitHub API / コメント操作
 
-GitHub REST API / PR・Issue コメント / Actions 出力操作 / 簡単なJSONオブジェクトの解析等を行う場合は `actions/github-script@v7` を使用します。
+GitHub REST API / PR・Issue コメント / Actions 出力操作 / 簡単なJSONオブジェクトの解析等を行う場合は `actions/github-script@v9` を使用します。
 
 ```yaml
 - name: Post PR Comment
-  uses: actions/github-script@v7
+  uses: actions/github-script@v9
   env:
     ACTION_PATH: ${{ github.action_path }}
     PR_NUMBER: ${{ inputs.pr_number }}
