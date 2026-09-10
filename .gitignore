@@ -44,4 +44,4 @@ wrangler.deploy.jsonc
 .env.deploy
 
 # Nested Repo Ignore
-.context/
+nu-shinkan.wiki/

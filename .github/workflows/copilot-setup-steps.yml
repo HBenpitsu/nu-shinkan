@@ -20,8 +20,8 @@ jobs:
       - name: Checkout product
         uses: actions/checkout@v7
 
-      - name: Checkout review context
+      - name: Checkout wiki
         uses: actions/checkout@v7
         with:
-          repository: nu-shinkan-project/context
-          path: .context
+          repository: nu-shinkan-project/nu-shinkan.wiki
+          path: nu-shinkan.wiki
