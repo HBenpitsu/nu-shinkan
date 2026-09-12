@@ -297,9 +297,6 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.11.0
-      node:
-        specifier: ^26.8.1
-        version: 26.8.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -416,9 +413,6 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.11.0
-      node:
-        specifier: ^26.8.1
-        version: 26.8.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -682,9 +676,6 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.11.0
-      node:
-        specifier: ^26.8.1
-        version: 26.8.1
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
@@ -2490,17 +2481,9 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  node-bin-setup@1.1.4:
-    resolution: {integrity: sha512-vWNHOne0ZUavArqPP5LJta50+S8R261Fr5SvGul37HbEDcowvLjwdvd0ZeSr0r2lTSrPxl6okq9QUw8BFGiAxA==}
-
   node-releases@2.0.54:
     resolution: {integrity: sha512-YHs7BmmcsdAI5Ozuf8JZo6PT0mv2GIWC9vMfvUC3dp65M8hn7Ux8CPL+2oBI7juNuj9d0ndhTcznq2ODBps9cQ==}
     engines: {node: '>=18'}
-
-  node@26.8.1:
-    resolution: {integrity: sha512-nmHy6P+rwsyfiijgUmrTn6QAGCWe0YBFNDD0WdYqw64MHDzaN5MV+iW4vMV1OaUQZKpbK9OIW8mt26HkA90pMw==}
-    engines: {npm: '>=5.0.0'}
-    hasBin: true
 
   obug@2.1.4:
     resolution: {integrity: sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA==}
@@ -4531,13 +4514,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  node-bin-setup@1.1.4: {}
-
   node-releases@2.0.54: {}
-
-  node@26.8.1:
-    dependencies:
-      node-bin-setup: 1.1.4
 
   obug@2.1.4: {}
 
