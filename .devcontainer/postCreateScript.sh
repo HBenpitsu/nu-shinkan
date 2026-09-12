@@ -25,11 +25,12 @@ git config fetch.prune true
 # ---------------------------
 
 pnpm install --frozen-lockfile
-pnpm self-update
 pnpm prepare
 
 # ---------------------------
 # Wiki Repo Setup
 # ---------------------------
 
-git clone https://github.com/nu-shinkan-project/nu-shinkan.wiki.git
+if [[ ! -d "$target_dir" ]]; then
+  git clone --depth 1 https://github.com/nu-shinkan-project/nu-shinkan.wiki.git
+fi
