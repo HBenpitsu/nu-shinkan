@@ -2,7 +2,10 @@
 	"servers": {
 		"github-mcp-server": {
 			"url": "https://api.githubcopilot.com/mcp/",
-			"type": "http"
+			"type": "http",
+			"headers": {
+				"Authorization": "Bearer ${env:GITHUB_MCP_BEARER_TOKEN}"
+			}
 		},
 		"notion-mcp-server": {
 			"url": "https://mcp.notion.com/mcp",
