@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+sudo apt update
+sudo apt install ripgrep -y
+
 # ---------------------------
 # git configuration
 # ---------------------------
@@ -22,4 +25,5 @@ git config fetch.prune true
 # ---------------------------
 
 pnpm install --frozen-lockfile
+pnpm self-update
 pnpm prepare

@@ -16,13 +16,13 @@
   },
   "devDependencies": {
     "@types/node": "26.3.0",
+    "husky": "^8.0.0",
     "lint-staged": "^17.4.1",
     "prettier": "3.9.6",
     "tsx": "^4.23.13",
-    "turbo": "^2.10.12",
-    "husky": "^8.0.0"
+    "turbo": "^2.10.12"
   },
-  "packageManager": "pnpm@11.23.0",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "node": ">=24"
   }

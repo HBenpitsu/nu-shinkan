@@ -1,0 +1,13 @@
+{
+	"servers": {
+		"github-mcp-server": {
+			"url": "https://api.githubcopilot.com/mcp/",
+			"type": "http"
+		},
+		"notion-mcp-server": {
+			"url": "https://mcp.notion.com/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

@@ -12,11 +12,15 @@
 	// "forwardPorts": [],
 
 	"postCreateCommand": "bash .devcontainer/postCreateScript.sh",
-	"postAttachCommand": "bash .devcontainer/postAttachScript.sh"
+	"postAttachCommand": "bash .devcontainer/postAttachScript.sh",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
 
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
+
+	"remoteEnv": {
+		"GITHUB_MCP_BEARER_TOKEN": "${localEnv:GITHUB_MCP_BEARER_TOKEN}"
+	}
 }

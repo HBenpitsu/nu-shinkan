@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "fill-labs.dependi",
+        "christian-kohler.npm-intellisense",
+        "davidanson.vscode-markdownlint",
+        "github.vscode-pull-request-github",
+        "github.vscode-github-actions"
+    ]
+}
